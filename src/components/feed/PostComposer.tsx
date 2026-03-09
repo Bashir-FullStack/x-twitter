@@ -75,14 +75,14 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
     if (imageFile) {
       const ext = imageFile.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, imageFile, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, imageFile, { upsert: true });
       if (uploadError) {
         toast({ title: "Image upload failed", description: uploadError.message, variant: "destructive" });
         setPosting(false);
         return;
       }
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      imageUrl = `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+      imageUrl = `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`;
     }
 
     const hashtags = content.match(/#\w+/g)?.map((h) => h.slice(1).toLowerCase()) || [];
