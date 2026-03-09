@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, FileText, User, Users as UsersIcon, Clock } from "lucide-react";
+import VerifiedBadge from "@/components/VerifiedBadge";
 
 const SearchPage = () => {
   const [query, setQuery] = useState("");
