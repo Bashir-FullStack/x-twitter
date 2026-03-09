@@ -61,15 +61,15 @@ const AdminPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [profilesRes, reportsRes, postsRes, groupsRes] = await Promise.all([
+    const [profilesRes, reportsRes, postsRes, groupsRes, suggestedRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("reports").select("*").order("created_at", { ascending: false }),
       supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("groups").select("*").order("created_at", { ascending: false }),
+      supabase.from("suggested_follows").select("user_id"),
     ]);
 
     // Get roles for all users
-    const userIds = profilesRes.data?.map((p) => p.user_id) || [];
     const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
 
     const usersWithRoles: UserProfile[] = (profilesRes.data || []).map((p) => ({
@@ -77,6 +77,7 @@ const AdminPage = () => {
       roles: rolesData?.filter((r) => r.user_id === p.user_id).map((r) => r.role) || [],
     }));
 
+    setSuggestedFollowIds(new Set(suggestedRes.data?.map((s) => s.user_id) || []));
     setUsers(usersWithRoles);
     setReports((reportsRes.data as Report[]) || []);
     setPosts(postsRes.data || []);
