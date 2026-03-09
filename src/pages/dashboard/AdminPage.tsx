@@ -231,6 +231,9 @@ const AdminPage = () => {
                     <Button variant={u.is_verified ? "outline" : "default"} size="sm" onClick={() => toggleVerify(u.user_id, u.is_verified)} title={u.is_verified ? "Remove blue tick" : "Give blue tick"}>
                       <BadgeCheck className={`h-4 w-4 ${u.is_verified ? "text-muted-foreground" : ""}`} />
                     </Button>
+                    <Button variant={suggestedFollowIds.has(u.user_id) ? "default" : "outline"} size="sm" onClick={() => toggleSuggestedFollow(u.user_id)} title={suggestedFollowIds.has(u.user_id) ? "Remove from must-follow" : "Add to must-follow list"}>
+                      <UserPlus className={`h-4 w-4 ${suggestedFollowIds.has(u.user_id) ? "" : "text-muted-foreground"}`} />
+                    </Button>
                     <Select value={u.roles[0] || "user"} onValueChange={(v) => updateRole(u.user_id, v)}>
                       <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
