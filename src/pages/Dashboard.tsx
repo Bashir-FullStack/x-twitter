@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import PostComposer from "@/components/feed/PostComposer";
@@ -6,7 +6,7 @@ import FeedPost from "@/components/feed/FeedPost";
 import TrendingSidebar from "@/components/feed/TrendingSidebar";
 import WhoToFollow from "@/components/feed/WhoToFollow";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, RefreshCw } from "lucide-react";
+import { Sparkles, RefreshCw, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface FeedPostData {
@@ -41,37 +41,45 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"foryou" | "following" | "trending">("foryou");
   const [quotedPost, setQuotedPost] = useState<FeedPostData | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const observerRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 20;
 
-  const loadFeed = useCallback(async () => {
+  const loadFeed = useCallback(async (pageNum = 0, append = false) => {
     if (!user) return;
-    setLoading(true);
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
 
     let query = supabase
       .from("posts")
       .select("*")
       .eq("status", "published")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
     if (tab === "following") {
-      const { data: followingData } = await supabase
-        .from("follows")
-        .select("following_id")
-        .eq("follower_id", user.id);
+      const { data: followingData } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
       const followingIds = followingData?.map((f) => f.following_id) || [];
       if (followingIds.length > 0) {
-        query = query.in("user_id", followingIds);
+        query = query.in("user_id", [...followingIds, user.id]);
       } else {
-        setPosts([]);
-        setLoading(false);
-        return;
+        setPosts([]); setLoading(false); setLoadingMore(false); return;
       }
     } else if (tab === "trending") {
-      query = query.order("likes_count", { ascending: false });
+      query = supabase.from("posts").select("*").eq("status", "published").order("likes_count", { ascending: false }).range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
     }
 
     const { data: postsData } = await query;
-    if (!postsData?.length) { setPosts([]); setLoading(false); return; }
+    if (!postsData?.length) { 
+      if (!append) setPosts([]);
+      setHasMore(false); setLoading(false); setLoadingMore(false); return; 
+    }
+
+    setHasMore(postsData.length === PAGE_SIZE);
 
     const userIds = [...new Set(postsData.map((p) => p.user_id))];
     const postIds = postsData.map((p) => p.id);
@@ -90,29 +98,58 @@ const Dashboard = () => {
     const feed: FeedPostData[] = postsData.map((p) => {
       const profile = profilesRes.data?.find((pr) => pr.user_id === p.user_id);
       return {
-        ...p,
-        tags: p.tags || [],
-        profile: {
-          display_name: profile?.display_name || "User",
-          avatar_url: profile?.avatar_url,
-          is_verified: profile?.is_verified || false,
-          user_id: p.user_id,
-        },
-        liked: likedSet.has(p.id),
-        bookmarked: bookmarkedSet.has(p.id),
-        reposted: repostedSet.has(p.id),
+        ...p, tags: p.tags || [],
+        profile: { display_name: profile?.display_name || "User", avatar_url: profile?.avatar_url, is_verified: profile?.is_verified || false, user_id: p.user_id },
+        liked: likedSet.has(p.id), bookmarked: bookmarkedSet.has(p.id), reposted: repostedSet.has(p.id),
       };
     });
 
-    setPosts(feed);
+    if (append) setPosts(prev => [...prev, ...feed]);
+    else setPosts(feed);
     setLoading(false);
+    setLoadingMore(false);
   }, [user, tab]);
 
-  useEffect(() => { loadFeed(); }, [loadFeed]);
+  useEffect(() => { setPage(0); setHasMore(true); loadFeed(0); }, [loadFeed]);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!observerRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !loadingMore && hasMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadFeed(nextPage, true);
+      }
+    }, { threshold: 0.5 });
+    observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, page, loadFeed]);
+
+  // Scroll to top button
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 500);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Real-time new post indicator
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel("feed-realtime").on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, (payload) => {
+      if ((payload.new as any).user_id !== user.id && (payload.new as any).status === "published") {
+        setNewPostsAvailable(true);
+      }
+    }).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadFeed();
+    setNewPostsAvailable(false);
+    setPage(0);
+    setHasMore(true);
+    await loadFeed(0);
     setRefreshing(false);
   };
 
@@ -121,11 +158,12 @@ const Dashboard = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
   return (
     <div className="flex justify-center">
-      {/* Main Feed Column */}
       <div className="flex-1 min-w-0 max-w-[600px] border-x border-border">
-        {/* Tabs header */}
+        {/* Tabs */}
         <div className="sticky top-0 lg:top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border">
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="w-full bg-transparent h-[53px] p-0 gap-0 rounded-none">
@@ -134,11 +172,7 @@ const Dashboard = () => {
                 { value: "following", label: "Following" },
                 { value: "trending", label: "Trending" },
               ].map(t => (
-                <TabsTrigger
-                  key={t.value}
-                  value={t.value}
-                  className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground"
-                >
+                <TabsTrigger key={t.value} value={t.value} className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground">
                   {t.label}
                 </TabsTrigger>
               ))}
@@ -146,14 +180,19 @@ const Dashboard = () => {
           </Tabs>
         </div>
 
-        {/* Composer */}
+        {/* New posts banner */}
+        {newPostsAvailable && (
+          <button onClick={handleRefresh} className="w-full py-3 text-sm text-primary bg-primary/5 hover:bg-primary/10 transition-colors font-medium border-b border-border">
+            Show new posts
+          </button>
+        )}
+
         <PostComposer
-          onPostCreated={loadFeed}
+          onPostCreated={() => { setPage(0); loadFeed(0); }}
           quotedPost={quotedPost ? { id: quotedPost.id, body: quotedPost.body || quotedPost.title, profile: quotedPost.profile } : null}
           onClearQuote={() => setQuotedPost(null)}
         />
 
-        {/* Refresh button */}
         <div className="flex justify-center py-2 border-b border-border">
           <Button variant="ghost" size="sm" onClick={handleRefresh} className="text-primary text-sm rounded-full gap-2" disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -161,7 +200,6 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Posts */}
         {loading ? (
           <div className="divide-y divide-border">
             {[1, 2, 3, 4].map((i) => (
@@ -172,7 +210,6 @@ const Dashboard = () => {
                     <div className="h-4 w-36 bg-muted rounded" />
                     <div className="h-4 w-full bg-muted rounded" />
                     <div className="h-4 w-3/4 bg-muted rounded" />
-                    <div className="h-32 w-full bg-muted rounded-xl mt-2" />
                   </div>
                 </div>
               </div>
@@ -191,8 +228,20 @@ const Dashboard = () => {
         ) : (
           <div className="pb-16 lg:pb-0">
             {posts.map((post) => (
-              <FeedPost key={post.id} post={post} onUpdate={loadFeed} onQuote={handleQuote} />
+              <FeedPost key={post.id} post={post} onUpdate={() => loadFeed(0)} onQuote={handleQuote} />
             ))}
+            {/* Infinite scroll sentinel */}
+            <div ref={observerRef} className="h-10" />
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            )}
+            {!hasMore && posts.length > 0 && (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                You've reached the end — you're all caught up!
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -202,15 +251,21 @@ const Dashboard = () => {
         <TrendingSidebar />
         <WhoToFollow />
         <div className="px-4 text-xs text-muted-foreground space-x-3 flex flex-wrap leading-6">
-          <span className="hover:underline cursor-pointer">Terms</span>
-          <span className="hover:underline cursor-pointer">Privacy</span>
+          <a href="/dashboard/terms" className="hover:underline cursor-pointer">Terms</a>
+          <a href="/dashboard/privacy" className="hover:underline cursor-pointer">Privacy</a>
           <span className="hover:underline cursor-pointer">Cookies</span>
-          <span className="hover:underline cursor-pointer">About</span>
-          <span className="hover:underline cursor-pointer">Ads</span>
+          <a href="/dashboard/help" className="hover:underline cursor-pointer">Help</a>
           <span className="hover:underline cursor-pointer">Accessibility</span>
           <span>© 2026 Platform</span>
         </div>
       </div>
+
+      {/* Scroll to top */}
+      {showScrollTop && (
+        <button onClick={scrollToTop} className="fixed bottom-20 right-6 lg:bottom-8 h-12 w-12 rounded-full gradient-primary text-primary-foreground shadow-glow flex items-center justify-center z-40 hover:opacity-90 transition-opacity">
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 };

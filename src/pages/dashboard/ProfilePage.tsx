@@ -10,8 +10,9 @@ import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import FeedPost from "@/components/feed/FeedPost";
 import FollowListDialog from "@/components/FollowListDialog";
-import { ArrowLeft, Calendar, Camera, MapPin, LinkIcon, Mail } from "lucide-react";
+import { ArrowLeft, Calendar, Camera, MapPin, LinkIcon, Mail, Shield, Share } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useRole } from "@/hooks/useRole";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { uploadAvatar, getAvatarUrl } from "@/lib/avatar";
@@ -19,21 +20,24 @@ import type { FeedPostData } from "@/pages/Dashboard";
 
 const ProfilePage = () => {
   const { user } = useAuth();
+  const { isAdmin } = useRole();
   const { toast } = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<FeedPostData[]>([]);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ display_name: "", bio: "", phone: "" });
+  const [editForm, setEditForm] = useState({ display_name: "", bio: "", phone: "", website: "", location: "" });
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("posts");
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
+  const [likedPosts, setLikedPosts] = useState<FeedPostData[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -60,13 +64,13 @@ const ProfilePage = () => {
         display_name: profileRes.data.display_name || "",
         bio: profileRes.data.bio || "",
         phone: profileRes.data.phone || "",
+        website: "",
+        location: "",
       });
     }
 
     const allPosts = postsRes.data || [];
-    const filteredPosts = tab === "posts" 
-      ? allPosts.filter(p => p.status === "published")
-      : tab === "drafts"
+    const filteredPosts = tab === "drafts"
       ? allPosts.filter(p => p.status === "draft")
       : allPosts.filter(p => p.status === "published");
 
@@ -82,20 +86,29 @@ const ProfilePage = () => {
       const repostedSet = new Set(repostsRes.data?.map((r) => r.post_id));
 
       setPosts(filteredPosts.map((p) => ({
-        ...p,
-        tags: p.tags || [],
-        profile: {
-          display_name: profileRes.data.display_name || "User",
-          avatar_url: profileRes.data.avatar_url,
-          is_verified: profileRes.data.is_verified,
-          user_id: user.id,
-        },
-        liked: likedSet.has(p.id),
-        bookmarked: bookmarkedSet.has(p.id),
-        reposted: repostedSet.has(p.id),
+        ...p, tags: p.tags || [],
+        profile: { display_name: profileRes.data.display_name || "User", avatar_url: profileRes.data.avatar_url, is_verified: profileRes.data.is_verified, user_id: user.id },
+        liked: likedSet.has(p.id), bookmarked: bookmarkedSet.has(p.id), reposted: repostedSet.has(p.id),
       })));
     } else {
       setPosts([]);
+    }
+
+    // Load liked posts for the Likes tab
+    if (tab === "likes") {
+      const { data: likedData } = await supabase.from("likes").select("post_id").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+      if (likedData?.length) {
+        const likedPostIds = likedData.map(l => l.post_id);
+        const { data: likedPostsData } = await supabase.from("posts").select("*").in("id", likedPostIds).eq("status", "published");
+        if (likedPostsData?.length) {
+          const userIds = [...new Set(likedPostsData.map(p => p.user_id))];
+          const { data: profiles } = await supabase.from("profiles").select("user_id, display_name, avatar_url, is_verified").in("user_id", userIds);
+          setLikedPosts(likedPostsData.map(p => {
+            const prof = profiles?.find(pr => pr.user_id === p.user_id);
+            return { ...p, tags: p.tags || [], profile: { display_name: prof?.display_name || "User", avatar_url: prof?.avatar_url, is_verified: prof?.is_verified || false, user_id: p.user_id }, liked: true, bookmarked: false, reposted: false };
+          }));
+        }
+      }
     }
 
     setLoading(false);
@@ -108,48 +121,42 @@ const ProfilePage = () => {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 5MB", variant: "destructive" });
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) { toast({ title: "File too large", description: "Max 5MB", variant: "destructive" }); return; }
     setUploading(true);
     try {
       await uploadAvatar(user.id, file);
       setAvatarPreview(URL.createObjectURL(file));
       toast({ title: "Profile picture updated!" });
       loadProfile();
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
-    }
+    } catch (err: any) { toast({ title: "Upload failed", description: err.message, variant: "destructive" }); }
     setUploading(false);
   };
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update(editForm).eq("user_id", user.id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Profile updated" });
-      setEditOpen(false);
-      loadProfile();
-    }
+    const { error } = await supabase.from("profiles").update({ display_name: editForm.display_name, bio: editForm.bio, phone: editForm.phone }).eq("user_id", user.id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Profile updated" }); setEditOpen(false); loadProfile(); }
     setSaving(false);
   };
 
+  const shareProfile = () => {
+    const url = `${window.location.origin}/dashboard/user/${user?.id}`;
+    if (navigator.share) { navigator.share({ title: profile?.display_name, url }); }
+    else { navigator.clipboard.writeText(url); toast({ title: "Profile link copied!" }); }
+  };
+
   const avatarUrl = avatarPreview || getAvatarUrl(profile?.avatar_url);
+  const displayPosts = tab === "likes" ? likedPosts : posts;
+  const mediaPosts = posts.filter(p => p.image_url);
 
   if (loading) {
     return (
       <div className="max-w-[600px] border-x border-border min-h-screen mx-auto lg:mx-0">
         <div className="animate-pulse">
           <div className="h-48 bg-muted" />
-          <div className="px-4 pb-4">
-            <div className="h-[134px] w-[134px] rounded-full bg-muted -mt-[67px] border-4 border-background" />
-            <div className="h-5 w-32 bg-muted rounded mt-3" />
-            <div className="h-4 w-48 bg-muted rounded mt-2" />
-          </div>
+          <div className="px-4 pb-4"><div className="h-[134px] w-[134px] rounded-full bg-muted -mt-[67px] border-4 border-background" /></div>
         </div>
       </div>
     );
@@ -161,16 +168,18 @@ const ProfilePage = () => {
 
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md h-[53px] flex items-center gap-6 px-4 border-b border-border">
-        <button onClick={() => navigate(-1)} className="hover:bg-muted rounded-full p-1.5 transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
+        <button onClick={() => navigate(-1)} className="hover:bg-muted rounded-full p-1.5"><ArrowLeft className="h-5 w-5" /></button>
+        <div className="flex-1">
           <h1 className="font-display font-bold text-[17px] leading-tight flex items-center gap-1">
             {profile?.display_name || "User"}
             {profile?.is_verified && <VerifiedBadge className="h-5 w-5" />}
+            {isAdmin && <Shield className="h-4 w-4 text-success" />}
           </h1>
           <p className="text-[13px] text-muted-foreground">{posts.length} posts</p>
         </div>
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" onClick={shareProfile}>
+          <Share className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Banner */}
@@ -179,19 +188,11 @@ const ProfilePage = () => {
         <div className="absolute -bottom-[67px] left-4">
           <div className="relative group">
             <div className="h-[134px] w-[134px] rounded-full border-4 border-background overflow-hidden bg-muted">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={profile?.display_name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-4xl font-bold text-primary bg-primary/10">
-                  {profile?.display_name?.[0]?.toUpperCase() || "U"}
-                </div>
+              {avatarUrl ? <img src={avatarUrl} alt={profile?.display_name} className="h-full w-full object-cover" /> : (
+                <div className="h-full w-full flex items-center justify-center text-4xl font-bold text-primary bg-primary/10">{profile?.display_name?.[0]?.toUpperCase() || "U"}</div>
               )}
             </div>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            >
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Camera className="h-8 w-8 text-white" />
             </button>
             {uploading && (
@@ -203,11 +204,8 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Edit Button */}
       <div className="flex justify-end p-4">
-        <Button variant="outline" className="rounded-full font-bold" onClick={() => setEditOpen(true)}>
-          Edit profile
-        </Button>
+        <Button variant="outline" className="rounded-full font-bold" onClick={() => setEditOpen(true)}>Edit profile</Button>
       </div>
 
       {/* Profile Info */}
@@ -215,18 +213,13 @@ const ProfilePage = () => {
         <h2 className="font-display text-xl font-bold flex items-center gap-1">
           {profile?.display_name}
           {profile?.is_verified && <VerifiedBadge className="h-5 w-5" />}
+          {isAdmin && <span className="ml-1 text-[10px] font-bold bg-success/20 text-success px-2 py-0.5 rounded-full">ADMIN</span>}
         </h2>
         <p className="text-[15px] text-muted-foreground">@{user?.email?.split("@")[0]}</p>
         {profile?.bio && <p className="text-[15px] mt-3 leading-[20px]">{profile.bio}</p>}
         <div className="flex items-center gap-4 mt-3 text-[15px] text-muted-foreground flex-wrap">
-          <span className="flex items-center gap-1">
-            <Mail className="h-4 w-4" />
-            {user?.email}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            Joined {new Date(profile?.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </span>
+          <span className="flex items-center gap-1"><Mail className="h-4 w-4" />{user?.email}</span>
+          <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />Joined {new Date(profile?.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</span>
         </div>
         <div className="flex gap-5 mt-3">
           <button onClick={() => setFollowListType("following")} className="text-[15px] hover:underline">
@@ -242,11 +235,7 @@ const ProfilePage = () => {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full bg-transparent h-[53px] p-0 gap-0 rounded-none border-b border-border">
           {["Posts", "Drafts", "Media", "Likes"].map(t => (
-            <TabsTrigger
-              key={t}
-              value={t.toLowerCase()}
-              className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground"
-            >
+            <TabsTrigger key={t} value={t.toLowerCase()} className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground">
               {t}
             </TabsTrigger>
           ))}
@@ -254,49 +243,41 @@ const ProfilePage = () => {
       </Tabs>
 
       {/* Posts */}
-      {posts.length > 0 ? (
-        <div className="pb-16 lg:pb-0">
-          {posts.map((post) => <FeedPost key={post.id} post={post} onUpdate={loadProfile} />)}
-        </div>
+      {tab === "media" ? (
+        mediaPosts.length > 0 ? (
+          <div className="grid grid-cols-3 gap-0.5">
+            {mediaPosts.map(p => (
+              <div key={p.id} className="aspect-square cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate(`/dashboard/post/${p.id}`)}>
+                <img src={p.image_url!} alt="" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-muted-foreground"><p className="text-[15px]">No media posts</p></div>
+        )
+      ) : displayPosts.length > 0 ? (
+        <div className="pb-16 lg:pb-0">{displayPosts.map((post) => <FeedPost key={post.id} post={post} onUpdate={loadProfile} />)}</div>
       ) : (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-[15px]">{tab === "drafts" ? "No drafts" : "No posts yet"}</p>
-        </div>
+        <div className="text-center py-16 text-muted-foreground"><p className="text-[15px]">{tab === "drafts" ? "No drafts" : tab === "likes" ? "No liked posts" : "No posts yet"}</p></div>
       )}
 
       {/* Edit Profile Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-display">Edit profile</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="font-display">Edit profile</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="flex items-center gap-4">
               <div className="relative group">
                 <div className="h-16 w-16 rounded-full overflow-hidden bg-muted">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center text-xl font-bold text-primary bg-primary/10">
-                      {editForm.display_name?.[0]?.toUpperCase() || "U"}
-                    </div>
-                  )}
+                  {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center text-xl font-bold text-primary bg-primary/10">{editForm.display_name?.[0]?.toUpperCase() || "U"}</div>}
                 </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                >
-                  <Camera className="h-5 w-5 text-white" />
-                </button>
+                <button onClick={() => fileInputRef.current?.click()} className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Camera className="h-5 w-5 text-white" /></button>
               </div>
               <div>
                 <p className="text-sm font-medium">Profile picture</p>
-                <button onClick={() => fileInputRef.current?.click()} className="text-sm text-primary hover:underline">
-                  {uploading ? "Uploading..." : "Change photo"}
-                </button>
+                <button onClick={() => fileInputRef.current?.click()} className="text-sm text-primary hover:underline">{uploading ? "Uploading..." : "Change photo"}</button>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Name</Label>
               <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} maxLength={50} />
@@ -306,6 +287,22 @@ const ProfilePage = () => {
               <Label>Bio</Label>
               <Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell the world about yourself" rows={3} className="resize-none" maxLength={160} />
               <p className="text-xs text-muted-foreground text-right">{editForm.bio.length}/160</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} placeholder="City, Country" className="pl-10" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Website</Label>
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} placeholder="https://" className="pl-10" />
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
@@ -318,14 +315,7 @@ const ProfilePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Followers/Following Dialog */}
-      <FollowListDialog
-        open={followListType !== null}
-        onOpenChange={(open) => !open && setFollowListType(null)}
-        userId={user?.id || ""}
-        type={followListType || "followers"}
-        title={followListType === "followers" ? "Followers" : "Following"}
-      />
+      <FollowListDialog open={followListType !== null} onOpenChange={(open) => !open && setFollowListType(null)} userId={user?.id || ""} type={followListType || "followers"} title={followListType === "followers" ? "Followers" : "Following"} />
     </div>
   );
 };
