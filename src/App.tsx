@@ -20,6 +20,8 @@ import NotificationsPage from "./pages/dashboard/NotificationsPage";
 import SecurityPage from "./pages/dashboard/SecurityPage";
 import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 import AdminPage from "./pages/dashboard/AdminPage";
+import BookmarksPage from "./pages/dashboard/BookmarksPage";
+import UserProfilePage from "./pages/dashboard/UserProfilePage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -56,6 +58,8 @@ const App = () => (
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="admin" element={<AdminPage />} />
+                <Route path="bookmarks" element={<BookmarksPage />} />
+                <Route path="user/:userId" element={<UserProfilePage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
