@@ -134,7 +134,7 @@ const Onboarding = () => {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-sm">{u.display_name}</span>
-                        {u.is_verified && <BadgeCheck className="h-4 w-4 text-primary" />}
+                        {u.is_verified && <VerifiedBadge className="h-4 w-4" />}
                       </div>
                       {u.is_mandatory && (
                         <span className="text-[10px] text-warning font-medium">Required</span>

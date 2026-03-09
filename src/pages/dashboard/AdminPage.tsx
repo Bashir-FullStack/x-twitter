@@ -218,7 +218,7 @@ const AdminPage = () => {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-sm">{u.display_name || "User"}</span>
-                        {u.is_verified && <BadgeCheck className="h-4 w-4 text-primary" />}
+                        {u.is_verified && <VerifiedBadge className="h-4 w-4" />}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {u.roles.map((r) => (
