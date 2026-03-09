@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ interface UserSuggestion {
 const WhoToFollow = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
 
   useEffect(() => {
@@ -26,15 +28,10 @@ const WhoToFollow = () => {
 
   const loadSuggestions = async () => {
     if (!user) return;
-    
-    // Get users I'm already following
-    const { data: following } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", user.id);
+
+    const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
     const followingIds = new Set(following?.map((f) => f.following_id) || []);
 
-    // Get profiles I'm not following
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, display_name, bio, is_verified")
@@ -67,33 +64,40 @@ const WhoToFollow = () => {
   if (suggestions.length === 0) return null;
 
   return (
-    <Card className="border-border/50 bg-muted/30">
-      <CardHeader className="pb-3">
-        <CardTitle className="font-display text-lg">Who to follow</CardTitle>
+    <Card className="border-border/50 bg-muted/30 overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="font-display text-xl font-extrabold">Who to follow</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
+      <CardContent className="space-y-0 pt-0 -mx-3 px-0">
         {suggestions.map((u) => (
-          <div key={u.user_id} className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+          <div
+            key={u.user_id}
+            className="flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => navigate(`/dashboard/user/${u.user_id}`)}
+          >
+            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
               {u.display_name?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
-                <span className="font-semibold text-sm truncate">{u.display_name || "User"}</span>
-                {u.is_verified && <VerifiedBadge className="h-3.5 w-3.5" />}
+                <span className="font-bold text-sm truncate">{u.display_name || "User"}</span>
+                {u.is_verified && <VerifiedBadge className="h-[15px] w-[15px]" />}
               </div>
               {u.bio && <p className="text-xs text-muted-foreground truncate">{u.bio}</p>}
             </div>
             <Button
               size="sm"
               variant={u.following ? "outline" : "default"}
-              onClick={() => toggleFollow(u.user_id)}
-              className={`rounded-full text-xs h-8 px-4 ${!u.following ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
+              onClick={(e) => { e.stopPropagation(); toggleFollow(u.user_id); }}
+              className={`rounded-full text-xs h-8 px-4 font-bold ${!u.following ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
             >
               {u.following ? "Following" : "Follow"}
             </Button>
           </div>
         ))}
+        <button className="w-full text-left px-6 py-3 text-sm text-primary hover:bg-muted/50 transition-colors">
+          Show more
+        </button>
       </CardContent>
     </Card>
   );

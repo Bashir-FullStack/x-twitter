@@ -15,12 +15,12 @@ const PostComposer = ({ onPostCreated }: PostComposerProps) => {
   const { toast } = useToast();
   const [content, setContent] = useState("");
   const [posting, setPosting] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const handlePost = async () => {
     if (!user || !content.trim()) return;
     setPosting(true);
 
-    // Extract hashtags
     const hashtags = content.match(/#\w+/g)?.map((h) => h.slice(1).toLowerCase()) || [];
 
     const { error } = await supabase.from("posts").insert({
@@ -35,55 +35,71 @@ const PostComposer = ({ onPostCreated }: PostComposerProps) => {
     if (error) {
       toast({ title: "Error posting", description: error.message, variant: "destructive" });
     } else {
-      // Update hashtag counts
       for (const tag of hashtags) {
-        await supabase.from("hashtags").upsert(
-          { name: tag, post_count: 1 },
-          { onConflict: "name" }
-        );
+        await supabase.from("hashtags").upsert({ name: tag, post_count: 1 }, { onConflict: "name" });
       }
       setContent("");
+      setFocused(false);
       onPostCreated();
     }
     setPosting(false);
   };
 
+  const charCount = content.length;
+  const maxChars = 500;
+  const isOverLimit = charCount > maxChars;
+
   return (
     <div className="border-b border-border p-4">
       <div className="flex gap-3">
-        <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+        <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
           {user?.user_metadata?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
         </div>
         <div className="flex-1">
+          {focused && (
+            <div className="flex items-center gap-1 mb-2">
+              <Button variant="outline" size="sm" className="rounded-full text-xs h-6 px-3 text-primary border-primary/30">
+                <Globe className="h-3 w-3 mr-1" /> Everyone can reply
+              </Button>
+            </div>
+          )}
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onFocus={() => setFocused(true)}
             placeholder="What is happening?!"
-            className="border-0 bg-transparent resize-none text-lg placeholder:text-muted-foreground/60 focus-visible:ring-0 p-0 min-h-[60px]"
-            rows={2}
+            className="border-0 bg-transparent resize-none text-xl placeholder:text-muted-foreground/50 focus-visible:ring-0 p-0 min-h-[28px]"
+            rows={focused ? 3 : 1}
           />
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80">
-                <Image className="h-4 w-4" />
+          <div className={`flex items-center justify-between mt-3 ${focused ? "pt-3 border-t border-border/50" : ""}`}>
+            <div className="flex items-center gap-0">
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full">
+                <Image className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80">
-                <BarChart3 className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full">
+                <BarChart3 className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80">
-                <Smile className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full">
+                <Smile className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80">
-                <MapPin className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full">
+                <MapPin className="h-5 w-5" />
               </Button>
             </div>
-            <Button
-              onClick={handlePost}
-              disabled={!content.trim() || posting}
-              className="gradient-primary text-primary-foreground rounded-full px-5 h-9 font-semibold"
-            >
-              {posting ? "Posting..." : "Post"}
-            </Button>
+            <div className="flex items-center gap-3">
+              {content.length > 0 && (
+                <div className={`text-xs ${isOverLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                  {charCount}/{maxChars}
+                </div>
+              )}
+              <Button
+                onClick={handlePost}
+                disabled={!content.trim() || posting || isOverLimit}
+                className="gradient-primary text-primary-foreground rounded-full px-5 h-9 font-bold text-[15px]"
+              >
+                {posting ? "..." : "Post"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
