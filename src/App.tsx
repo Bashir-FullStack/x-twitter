@@ -22,6 +22,10 @@ import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 import AdminPage from "./pages/dashboard/AdminPage";
 import BookmarksPage from "./pages/dashboard/BookmarksPage";
 import UserProfilePage from "./pages/dashboard/UserProfilePage";
+import PostDetailPage from "./pages/dashboard/PostDetailPage";
+import HelpPage from "./pages/dashboard/HelpPage";
+import TermsPage from "./pages/dashboard/TermsPage";
+import PrivacyPage from "./pages/dashboard/PrivacyPage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -60,6 +64,10 @@ const App = () => (
                 <Route path="admin" element={<AdminPage />} />
                 <Route path="bookmarks" element={<BookmarksPage />} />
                 <Route path="user/:userId" element={<UserProfilePage />} />
+                <Route path="post/:postId" element={<PostDetailPage />} />
+                <Route path="help" element={<HelpPage />} />
+                <Route path="terms" element={<TermsPage />} />
+                <Route path="privacy" element={<PrivacyPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
