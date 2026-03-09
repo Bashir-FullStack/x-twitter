@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import FeedPost from "@/components/feed/FeedPost";
-import { ArrowLeft, Calendar, Camera, X, MapPin, LinkIcon } from "lucide-react";
+import FollowListDialog from "@/components/FollowListDialog";
+import { ArrowLeft, Calendar, Camera, MapPin, LinkIcon, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ const ProfilePage = () => {
   const [tab, setTab] = useState("posts");
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -46,7 +48,7 @@ const ProfilePage = () => {
       supabase.from("profiles").select("*").eq("user_id", user.id).single(),
       supabase.from("follows").select("id", { count: "exact", head: true }).eq("following_id", user.id),
       supabase.from("follows").select("id", { count: "exact", head: true }).eq("follower_id", user.id),
-      supabase.from("posts").select("*").eq("user_id", user.id).eq("status", "published").order("created_at", { ascending: false }),
+      supabase.from("posts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
 
     setProfile(profileRes.data);
@@ -61,8 +63,15 @@ const ProfilePage = () => {
       });
     }
 
-    if (postsRes.data?.length && profileRes.data) {
-      const postIds = postsRes.data.map((p) => p.id);
+    const allPosts = postsRes.data || [];
+    const filteredPosts = tab === "posts" 
+      ? allPosts.filter(p => p.status === "published")
+      : tab === "drafts"
+      ? allPosts.filter(p => p.status === "draft")
+      : allPosts.filter(p => p.status === "published");
+
+    if (filteredPosts.length && profileRes.data) {
+      const postIds = filteredPosts.map((p) => p.id);
       const [likesRes, bookmarksRes, repostsRes] = await Promise.all([
         supabase.from("likes").select("post_id").eq("user_id", user.id).in("post_id", postIds),
         supabase.from("bookmarks").select("post_id").eq("user_id", user.id).in("post_id", postIds),
@@ -72,7 +81,7 @@ const ProfilePage = () => {
       const bookmarkedSet = new Set(bookmarksRes.data?.map((b) => b.post_id));
       const repostedSet = new Set(repostsRes.data?.map((r) => r.post_id));
 
-      setPosts(postsRes.data.map((p) => ({
+      setPosts(filteredPosts.map((p) => ({
         ...p,
         tags: p.tags || [],
         profile: {
@@ -92,15 +101,17 @@ const ProfilePage = () => {
     setLoading(false);
   };
 
+  useEffect(() => {
+    if (user && profile) loadProfile();
+  }, [tab]);
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: "File too large", description: "Max 5MB", variant: "destructive" });
       return;
     }
-
     setUploading(true);
     try {
       await uploadAvatar(user.id, file);
@@ -146,7 +157,6 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-[600px] border-x border-border min-h-screen mx-auto lg:mx-0">
-      {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
       {/* Header */}
@@ -166,7 +176,6 @@ const ProfilePage = () => {
       {/* Banner */}
       <div className="relative">
         <div className="h-48 bg-gradient-to-br from-primary/30 via-primary/10 to-accent/20" />
-        {/* Avatar with camera overlay */}
         <div className="absolute -bottom-[67px] left-4">
           <div className="relative group">
             <div className="h-[134px] w-[134px] rounded-full border-4 border-background overflow-hidden bg-muted">
@@ -211,24 +220,28 @@ const ProfilePage = () => {
         {profile?.bio && <p className="text-[15px] mt-3 leading-[20px]">{profile.bio}</p>}
         <div className="flex items-center gap-4 mt-3 text-[15px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
+            <Mail className="h-4 w-4" />
+            {user?.email}
+          </span>
+          <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
             Joined {new Date(profile?.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </span>
         </div>
         <div className="flex gap-5 mt-3">
-          <span className="text-[15px] cursor-pointer hover:underline">
+          <button onClick={() => setFollowListType("following")} className="text-[15px] hover:underline">
             <strong>{followingCount}</strong> <span className="text-muted-foreground">Following</span>
-          </span>
-          <span className="text-[15px] cursor-pointer hover:underline">
+          </button>
+          <button onClick={() => setFollowListType("followers")} className="text-[15px] hover:underline">
             <strong>{followersCount}</strong> <span className="text-muted-foreground">Followers</span>
-          </span>
+          </button>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full bg-transparent h-[53px] p-0 gap-0 rounded-none border-b border-border">
-          {["Posts", "Replies", "Media", "Likes"].map(t => (
+          {["Posts", "Drafts", "Media", "Likes"].map(t => (
             <TabsTrigger
               key={t}
               value={t.toLowerCase()}
@@ -242,10 +255,12 @@ const ProfilePage = () => {
 
       {/* Posts */}
       {posts.length > 0 ? (
-        posts.map((post) => <FeedPost key={post.id} post={post} onUpdate={loadProfile} />)
+        <div className="pb-16 lg:pb-0">
+          {posts.map((post) => <FeedPost key={post.id} post={post} onUpdate={loadProfile} />)}
+        </div>
       ) : (
         <div className="text-center py-16 text-muted-foreground">
-          <p className="text-[15px]">No posts yet</p>
+          <p className="text-[15px]">{tab === "drafts" ? "No drafts" : "No posts yet"}</p>
         </div>
       )}
 
@@ -256,7 +271,6 @@ const ProfilePage = () => {
             <DialogTitle className="font-display">Edit profile</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            {/* Avatar in edit dialog */}
             <div className="flex items-center gap-4">
               <div className="relative group">
                 <div className="h-16 w-16 rounded-full overflow-hidden bg-muted">
@@ -277,10 +291,7 @@ const ProfilePage = () => {
               </div>
               <div>
                 <p className="text-sm font-medium">Profile picture</p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-sm text-primary hover:underline"
-                >
+                <button onClick={() => fileInputRef.current?.click()} className="text-sm text-primary hover:underline">
                   {uploading ? "Uploading..." : "Change photo"}
                 </button>
               </div>
@@ -306,6 +317,15 @@ const ProfilePage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Followers/Following Dialog */}
+      <FollowListDialog
+        open={followListType !== null}
+        onOpenChange={(open) => !open && setFollowListType(null)}
+        userId={user?.id || ""}
+        type={followListType || "followers"}
+        title={followListType === "followers" ? "Followers" : "Following"}
+      />
     </div>
   );
 };
