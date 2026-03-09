@@ -83,7 +83,7 @@ const SearchPage = () => {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium text-sm">{u.display_name || "User"}</span>
-                          {u.is_verified && <span className="text-primary" title="Verified">✓</span>}
+                          {u.is_verified && <VerifiedBadge className="h-4 w-4" />}
                         </div>
                         {u.bio && <p className="text-xs text-muted-foreground truncate max-w-md">{u.bio}</p>}
                       </div>
