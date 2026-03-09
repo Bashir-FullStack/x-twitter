@@ -45,6 +45,7 @@ const AdminPage = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [suggestedFollowIds, setSuggestedFollowIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ users: 0, posts: 0, groups: 0, reports: 0 });
@@ -60,15 +61,15 @@ const AdminPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [profilesRes, reportsRes, postsRes, groupsRes] = await Promise.all([
+    const [profilesRes, reportsRes, postsRes, groupsRes, suggestedRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("reports").select("*").order("created_at", { ascending: false }),
       supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.from("groups").select("*").order("created_at", { ascending: false }),
+      supabase.from("suggested_follows").select("user_id"),
     ]);
 
     // Get roles for all users
-    const userIds = profilesRes.data?.map((p) => p.user_id) || [];
     const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
 
     const usersWithRoles: UserProfile[] = (profilesRes.data || []).map((p) => ({
@@ -76,6 +77,7 @@ const AdminPage = () => {
       roles: rolesData?.filter((r) => r.user_id === p.user_id).map((r) => r.role) || [],
     }));
 
+    setSuggestedFollowIds(new Set(suggestedRes.data?.map((s) => s.user_id) || []));
     setUsers(usersWithRoles);
     setReports((reportsRes.data as Report[]) || []);
     setPosts(postsRes.data || []);
@@ -120,6 +122,17 @@ const AdminPage = () => {
   const deleteGroup = async (groupId: string) => {
     await supabase.from("groups").delete().eq("id", groupId);
     toast({ title: "Group deleted" });
+    loadData();
+  };
+
+  const toggleSuggestedFollow = async (userId: string) => {
+    if (suggestedFollowIds.has(userId)) {
+      await supabase.from("suggested_follows").delete().eq("user_id", userId);
+      toast({ title: "Removed from suggested follows" });
+    } else {
+      await supabase.from("suggested_follows").insert({ user_id: userId, is_mandatory: true });
+      toast({ title: "Added to suggested follows — new users must follow this account" });
+    }
     loadData();
   };
 
@@ -217,6 +230,9 @@ const AdminPage = () => {
                   <div className="flex items-center gap-2">
                     <Button variant={u.is_verified ? "outline" : "default"} size="sm" onClick={() => toggleVerify(u.user_id, u.is_verified)} title={u.is_verified ? "Remove blue tick" : "Give blue tick"}>
                       <BadgeCheck className={`h-4 w-4 ${u.is_verified ? "text-muted-foreground" : ""}`} />
+                    </Button>
+                    <Button variant={suggestedFollowIds.has(u.user_id) ? "default" : "outline"} size="sm" onClick={() => toggleSuggestedFollow(u.user_id)} title={suggestedFollowIds.has(u.user_id) ? "Remove from must-follow" : "Add to must-follow list"}>
+                      <UserPlus className={`h-4 w-4 ${suggestedFollowIds.has(u.user_id) ? "" : "text-muted-foreground"}`} />
                     </Button>
                     <Select value={u.roles[0] || "user"} onValueChange={(v) => updateRole(u.user_id, v)}>
                       <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
