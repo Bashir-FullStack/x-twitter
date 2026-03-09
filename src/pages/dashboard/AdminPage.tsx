@@ -15,6 +15,7 @@ import {
   Users, Shield, FileText, Flag, CheckCircle, XCircle, BadgeCheck,
   Search, UserPlus, Trash2, Edit, BarChart3, AlertTriangle, Ban
 } from "lucide-react";
+import VerifiedBadge from "@/components/VerifiedBadge";
 
 interface UserProfile {
   user_id: string;
