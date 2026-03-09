@@ -95,7 +95,7 @@ const AdminPage = () => {
   const toggleVerify = async (userId: string, currentStatus: boolean) => {
     const { error } = await supabase.from("profiles").update({ is_verified: !currentStatus }).eq("user_id", userId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: currentStatus ? "Verification removed" : "User verified with blue tick ✓" });
+    toast({ title: currentStatus ? "Blue tick removed ✕" : "Blue tick granted ✓ — User is now verified!" });
     loadData();
   };
 
