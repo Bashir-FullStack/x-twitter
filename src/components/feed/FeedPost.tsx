@@ -16,6 +16,7 @@ interface FeedPostProps {
 
 const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [liked, setLiked] = useState(post.liked);
   const [likesCount, setLikesCount] = useState(post.likes_count);
