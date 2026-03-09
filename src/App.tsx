@@ -12,7 +12,14 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ProfilePage from "./pages/dashboard/ProfilePage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
-import PlaceholderPage from "./pages/dashboard/PlaceholderPage";
+import ContentPage from "./pages/dashboard/ContentPage";
+import MessagesPage from "./pages/dashboard/MessagesPage";
+import GroupsPage from "./pages/dashboard/GroupsPage";
+import SearchPage from "./pages/dashboard/SearchPage";
+import NotificationsPage from "./pages/dashboard/NotificationsPage";
+import SecurityPage from "./pages/dashboard/SecurityPage";
+import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
+import AdminPage from "./pages/dashboard/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,13 +45,15 @@ const App = () => (
               >
                 <Route index element={<Dashboard />} />
                 <Route path="profile" element={<ProfilePage />} />
-                <Route path="content" element={<PlaceholderPage title="Content" />} />
-                <Route path="messages" element={<PlaceholderPage title="Messages" />} />
-                <Route path="search" element={<PlaceholderPage title="Search" />} />
-                <Route path="notifications" element={<PlaceholderPage title="Notifications" />} />
-                <Route path="security" element={<PlaceholderPage title="Security" />} />
-                <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
+                <Route path="content" element={<ContentPage />} />
+                <Route path="messages" element={<MessagesPage />} />
+                <Route path="groups" element={<GroupsPage />} />
+                <Route path="search" element={<SearchPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="security" element={<SecurityPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="admin" element={<AdminPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

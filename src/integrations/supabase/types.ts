@@ -14,6 +14,226 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_public: boolean
+          max_members: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          max_members?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          max_members?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          group_id: string | null
+          id: string
+          is_edited: boolean
+          is_read: boolean
+          message_type: string
+          receiver_id: string | null
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          is_edited?: boolean
+          is_read?: boolean
+          message_type?: string
+          receiver_id?: string | null
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          is_edited?: boolean
+          is_read?: boolean
+          message_type?: string
+          receiver_id?: string | null
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          body: string | null
+          category: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          likes_count: number
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          views_count: number
+        }
+        Insert: {
+          body?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          likes_count?: number
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          views_count?: number
+        }
+        Update: {
+          body?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          likes_count?: number
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -52,6 +272,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          reason: string
+          reported_post_id: string | null
+          reported_user_id: string | null
+          reporter_id: string
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          reported_post_id?: string | null
+          reported_user_id?: string | null
+          reporter_id: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          reported_post_id?: string | null
+          reported_user_id?: string | null
+          reporter_id?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reported_post_id_fkey"
+            columns: ["reported_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
