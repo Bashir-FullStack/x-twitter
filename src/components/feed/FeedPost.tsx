@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import InlineComments from "@/components/feed/InlineComments";
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink, Shield, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +36,23 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
   const [editSaving, setEditSaving] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [likeAnimation, setLikeAnimation] = useState(false);
+  const [isAuthorAdmin, setIsAuthorAdmin] = useState(false);
+  const [viewIncremented, setViewIncremented] = useState(false);
+
+  // Check if author is admin
+  useEffect(() => {
+    supabase.from("user_roles").select("role").eq("user_id", post.user_id).in("role", ["admin", "super_admin"]).then(({ data }) => {
+      setIsAuthorAdmin((data?.length || 0) > 0);
+    });
+  }, [post.user_id]);
+
+  // Auto increment view count
+  useEffect(() => {
+    if (!viewIncremented && user) {
+      setViewIncremented(true);
+      supabase.from("posts").update({ views_count: (post.views_count || 0) + 1 }).eq("id", post.id);
+    }
+  }, [post.id]);
 
   const timeAgo = (date: string) => {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -177,6 +194,7 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
                   {post.profile.display_name}
                 </span>
                 {post.profile.is_verified && <VerifiedBadge className="h-[18px] w-[18px] shrink-0" />}
+                {isAuthorAdmin && <Shield className="h-[14px] w-[14px] text-success shrink-0" />}
                 <span className="text-muted-foreground text-[15px]">·</span>
                 <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo(post.created_at)}</span>
               </div>
