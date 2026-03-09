@@ -125,6 +125,17 @@ const AdminPage = () => {
     loadData();
   };
 
+  const toggleSuggestedFollow = async (userId: string) => {
+    if (suggestedFollowIds.has(userId)) {
+      await supabase.from("suggested_follows").delete().eq("user_id", userId);
+      toast({ title: "Removed from suggested follows" });
+    } else {
+      await supabase.from("suggested_follows").insert({ user_id: userId, is_mandatory: true });
+      toast({ title: "Added to suggested follows — new users must follow this account" });
+    }
+    loadData();
+  };
+
   const filteredUsers = users.filter((u) =>
     !searchQuery || u.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.user_id.includes(searchQuery)
   );
