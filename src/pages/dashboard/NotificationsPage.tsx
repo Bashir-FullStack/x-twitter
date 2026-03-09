@@ -97,7 +97,7 @@ const NotificationsPage = () => {
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem className="gap-2">
-                <Settings className="h-4 w-4" /> Notification settings
+                <SettingsIcon className="h-4 w-4" /> Notification settings
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
