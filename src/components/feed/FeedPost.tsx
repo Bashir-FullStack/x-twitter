@@ -194,6 +194,7 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
                   {post.profile.display_name}
                 </span>
                 {post.profile.is_verified && <VerifiedBadge className="h-[18px] w-[18px] shrink-0" />}
+                {isAuthorAdmin && <Shield className="h-[14px] w-[14px] text-success shrink-0" />}
                 <span className="text-muted-foreground text-[15px]">·</span>
                 <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo(post.created_at)}</span>
               </div>
