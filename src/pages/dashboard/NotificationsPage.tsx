@@ -33,7 +33,7 @@ const typeConfig: Record<string, { icon: typeof Info; color: string; bg: string 
   warning: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10" },
   success: { icon: CheckCircle, color: "text-success", bg: "bg-success/10" },
   error: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10" },
-  system: { icon: Settings, color: "text-muted-foreground", bg: "bg-muted" },
+  system: { icon: SettingsIcon, color: "text-muted-foreground", bg: "bg-muted" },
   security: { icon: Shield, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
