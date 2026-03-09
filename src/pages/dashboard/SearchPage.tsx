@@ -121,7 +121,7 @@ const SearchPage = () => {
               </TabsContent>
               <TabsContent value="users" className="space-y-3">
                 {results.users.map((u) => (
-                  <Card key={u.user_id} className="border-border/50"><CardContent className="flex items-center gap-3 p-4"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center"><User className="h-5 w-5 text-primary" /></div><div><span className="font-medium text-sm">{u.display_name}</span>{u.is_verified && <span className="ml-1 text-primary">✓</span>}</div></CardContent></Card>
+                  <Card key={u.user_id} className="border-border/50"><CardContent className="flex items-center gap-3 p-4"><div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center"><User className="h-5 w-5 text-primary" /></div><div><span className="font-medium text-sm">{u.display_name}</span>{u.is_verified && <VerifiedBadge className="ml-1 h-4 w-4 inline-block" />}</div></CardContent></Card>
                 ))}
               </TabsContent>
               <TabsContent value="groups" className="space-y-3">
