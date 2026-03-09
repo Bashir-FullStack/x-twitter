@@ -6,7 +6,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import {
   LayoutDashboard, User, Settings, Bell, Search, MessageSquare,
   FileText, Shield, BarChart3, LogOut, Menu, X, Zap, ChevronDown,
-  Users, ShieldAlert
+  Users, ShieldAlert, Bookmark, Hash, UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,13 +20,14 @@ const DashboardLayout = () => {
   const location = useLocation();
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: User, label: "Profile", path: "/dashboard/profile" },
-    { icon: FileText, label: "Content", path: "/dashboard/content" },
-    { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
-    { icon: Users, label: "Groups", path: "/dashboard/groups" },
-    { icon: Search, label: "Search", path: "/dashboard/search" },
+    { icon: LayoutDashboard, label: "Home", path: "/dashboard" },
+    { icon: Search, label: "Explore", path: "/dashboard/search" },
     { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
+    { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
+    { icon: Bookmark, label: "Bookmarks", path: "/dashboard/bookmarks" },
+    { icon: Users, label: "Groups", path: "/dashboard/groups" },
+    { icon: FileText, label: "My Content", path: "/dashboard/content" },
+    { icon: User, label: "Profile", path: "/dashboard/profile" },
     { icon: Shield, label: "Security", path: "/dashboard/security" },
     { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
     { icon: Settings, label: "Settings", path: "/dashboard/settings" },
@@ -52,7 +53,7 @@ const DashboardLayout = () => {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-3 overflow-y-auto max-h-[calc(100vh-4rem)]">
+        <nav className="flex-1 space-y-0.5 p-3 overflow-y-auto max-h-[calc(100vh-4rem)]">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -60,17 +61,26 @@ const DashboardLayout = () => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className={`h-5 w-5 ${isActive ? "" : ""}`} />
                 {item.label}
               </Link>
             );
           })}
+
+          {/* Post button */}
+          <div className="pt-4">
+            <Link to="/dashboard">
+              <Button className="w-full gradient-primary text-primary-foreground rounded-full h-11 font-semibold text-base">
+                Post
+              </Button>
+            </Link>
+          </div>
         </nav>
       </aside>
 
@@ -97,6 +107,7 @@ const DashboardLayout = () => {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link to="/dashboard/profile">Profile</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/dashboard/bookmarks">Bookmarks</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/dashboard/settings">Settings</Link></DropdownMenuItem>
                 {isAdmin && (<><DropdownMenuSeparator /><DropdownMenuItem asChild><Link to="/dashboard/admin">Admin Panel</Link></DropdownMenuItem></>)}
                 <DropdownMenuSeparator />
