@@ -41,6 +41,80 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string
@@ -130,6 +204,56 @@ export type Database = {
         }
         Relationships: []
       }
+      hashtags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          post_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          post_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          post_count?: number
+        }
+        Relationships: []
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -210,14 +334,116 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_options: {
+        Row: {
+          id: string
+          poll_id: string
+          text: string
+          votes_count: number
+        }
+        Insert: {
+          id?: string
+          poll_id: string
+          text: string
+          votes_count?: number
+        }
+        Update: {
+          id?: string
+          poll_id?: string
+          text?: string
+          votes_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          post_id: string
+          question: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          post_id: string
+          question: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          post_id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           body: string | null
           category: string | null
+          comments_count: number
           created_at: string
           id: string
           image_url: string | null
           likes_count: number
+          reposts_count: number
           status: string
           tags: string[] | null
           title: string
@@ -228,10 +454,12 @@ export type Database = {
         Insert: {
           body?: string | null
           category?: string | null
+          comments_count?: number
           created_at?: string
           id?: string
           image_url?: string | null
           likes_count?: number
+          reposts_count?: number
           status?: string
           tags?: string[] | null
           title: string
@@ -242,10 +470,12 @@ export type Database = {
         Update: {
           body?: string | null
           category?: string | null
+          comments_count?: number
           created_at?: string
           id?: string
           image_url?: string | null
           likes_count?: number
+          reposts_count?: number
           status?: string
           tags?: string[] | null
           title?: string
@@ -335,6 +565,35 @@ export type Database = {
           {
             foreignKeyName: "reports_reported_post_id_fkey"
             columns: ["reported_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reposts: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reposts_post_id_fkey"
+            columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
