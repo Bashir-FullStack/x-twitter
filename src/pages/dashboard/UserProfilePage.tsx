@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import FeedPost from "@/components/feed/FeedPost";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import UserAvatar from "@/components/UserAvatar";
+import { getAvatarUrl } from "@/lib/avatar";
 import { ArrowLeft, Calendar, Mail, MoreHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -13,21 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { FeedPostData } from "@/pages/Dashboard";
 
-interface UserProfileData {
-  user_id: string;
-  display_name: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  is_verified: boolean;
-  created_at: string;
-}
-
 const UserProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<FeedPostData[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -73,21 +66,19 @@ const UserProfilePage = () => {
       const bookmarkedSet = new Set(bookmarksRes.data?.map((b) => b.post_id));
       const repostedSet = new Set(repostsRes.data?.map((r) => r.post_id));
 
-      setPosts(
-        postsRes.data.map((p) => ({
-          ...p,
-          tags: p.tags || [],
-          profile: {
-            display_name: profileRes.data.display_name || "User",
-            avatar_url: profileRes.data.avatar_url,
-            is_verified: profileRes.data.is_verified,
-            user_id: userId,
-          },
-          liked: likedSet.has(p.id),
-          bookmarked: bookmarkedSet.has(p.id),
-          reposted: repostedSet.has(p.id),
-        }))
-      );
+      setPosts(postsRes.data.map((p) => ({
+        ...p,
+        tags: p.tags || [],
+        profile: {
+          display_name: profileRes.data.display_name || "User",
+          avatar_url: profileRes.data.avatar_url,
+          is_verified: profileRes.data.is_verified,
+          user_id: userId,
+        },
+        liked: likedSet.has(p.id),
+        bookmarked: bookmarkedSet.has(p.id),
+        reposted: repostedSet.has(p.id),
+      })));
     }
 
     setLoading(false);
@@ -107,7 +98,7 @@ const UserProfilePage = () => {
     }
   };
 
-  const startMessage = () => navigate("/dashboard/messages");
+  const avatarUrl = getAvatarUrl(profile?.avatar_url);
 
   if (loading) {
     return (
@@ -116,7 +107,7 @@ const UserProfilePage = () => {
           <div className="h-[53px] border-b border-border" />
           <div className="h-48 bg-muted" />
           <div className="px-4 pb-4">
-            <div className="h-20 w-20 rounded-full bg-muted -mt-10 border-4 border-background" />
+            <div className="h-[134px] w-[134px] rounded-full bg-muted -mt-[67px] border-4 border-background" />
             <div className="h-5 w-32 bg-muted rounded mt-3" />
             <div className="h-4 w-48 bg-muted rounded mt-2" />
           </div>
@@ -152,9 +143,15 @@ const UserProfilePage = () => {
       {/* Banner */}
       <div className="relative">
         <div className="h-48 bg-gradient-to-br from-primary/30 via-primary/10 to-accent/20" />
-        <div className="absolute -bottom-16 left-4">
-          <div className="h-[134px] w-[134px] rounded-full border-4 border-background bg-muted flex items-center justify-center text-4xl font-bold text-primary">
-            {profile.display_name?.[0]?.toUpperCase() || "U"}
+        <div className="absolute -bottom-[67px] left-4">
+          <div className="h-[134px] w-[134px] rounded-full border-4 border-background overflow-hidden bg-muted">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={profile.display_name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-4xl font-bold text-primary bg-primary/10">
+                {profile.display_name?.[0]?.toUpperCase() || "U"}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -174,7 +171,7 @@ const UserProfilePage = () => {
                 <DropdownMenuItem className="text-destructive">Block user</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="icon" className="rounded-full h-9 w-9" onClick={startMessage}>
+            <Button variant="outline" size="icon" className="rounded-full h-9 w-9" onClick={() => navigate("/dashboard/messages")}>
               <Mail className="h-5 w-5" />
             </Button>
             <Button
@@ -189,7 +186,7 @@ const UserProfilePage = () => {
       </div>
 
       {/* Info */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 mt-4">
         <h2 className="font-display text-xl font-bold flex items-center gap-1">
           {profile.display_name}
           {profile.is_verified && <VerifiedBadge className="h-5 w-5" />}
