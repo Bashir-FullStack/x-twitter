@@ -104,8 +104,8 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
           <div className="flex-1 min-w-0">
             {/* Header */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 min-w-0">
-                <span className="font-semibold text-sm truncate">{post.profile.display_name}</span>
+              <div className="flex items-center gap-1 min-w-0" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/user/${post.profile.user_id}`); }}>
+                <span className="font-semibold text-sm truncate hover:underline cursor-pointer">{post.profile.display_name}</span>
                 {post.profile.is_verified && <VerifiedBadge className="h-4 w-4 shrink-0" />}
                 <span className="text-muted-foreground text-sm">·</span>
                 <span className="text-muted-foreground text-sm shrink-0">{timeAgo(post.created_at)}</span>
