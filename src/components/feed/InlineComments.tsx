@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
-import { Trash2 } from "lucide-react";
+import { Trash2, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Comment {
@@ -15,6 +15,7 @@ interface Comment {
   content: string;
   created_at: string;
   isAuthorReply: boolean;
+  liked: boolean;
   profile?: { display_name: string | null; is_verified: boolean; avatar_url: string | null };
 }
 
@@ -55,6 +56,7 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
     const mapped: Comment[] = data.map((c) => ({
       ...c,
       isAuthorReply: c.user_id === postAuthorId,
+      liked: false,
       profile: profiles?.find((p) => p.user_id === c.user_id) || { display_name: "User", is_verified: false, avatar_url: null },
     }));
 
@@ -73,6 +75,8 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
     if (!user || !newComment.trim()) return;
     setPosting(true);
     await supabase.from("comments").insert({ user_id: user.id, post_id: postId, content: newComment.trim() });
+    // Update comment count on the post
+    await supabase.from("posts").update({ comments_count: comments.length + 1 }).eq("id", postId);
     setNewComment("");
     await loadComments();
     setPosting(false);
@@ -80,8 +84,13 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
 
   const deleteComment = async (id: string) => {
     await supabase.from("comments").delete().eq("id", id);
+    await supabase.from("posts").update({ comments_count: Math.max(0, comments.length - 1) }).eq("id", postId);
     await loadComments();
     toast({ title: "Comment deleted" });
+  };
+
+  const toggleCommentLike = (id: string) => {
+    setComments(prev => prev.map(c => c.id === id ? { ...c, liked: !c.liked } : c));
   };
 
   const timeAgo = (date: string) => {
@@ -153,13 +162,19 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
                     <span className="text-[10px] font-semibold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">Author</span>
                   )}
                   <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
+                </div>
+                <p className={`text-[14px] mt-0.5 leading-[18px] ${c.isAuthorReply ? "font-medium" : ""}`}>{c.content}</p>
+                {/* Comment actions */}
+                <div className="flex items-center gap-4 mt-1.5 -ml-1">
+                  <button onClick={() => toggleCommentLike(c.id)} className={`flex items-center gap-1 text-xs ${c.liked ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}>
+                    <Heart className={`h-3.5 w-3.5 ${c.liked ? "fill-current" : ""}`} />
+                  </button>
                   {user?.id === c.user_id && (
-                    <button onClick={() => deleteComment(c.id)} className="ml-auto text-muted-foreground hover:text-destructive transition-colors">
+                    <button onClick={() => deleteComment(c.id)} className="text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 className="h-3 w-3" />
                     </button>
                   )}
                 </div>
-                <p className={`text-[14px] mt-0.5 leading-[18px] ${c.isAuthorReply ? "font-medium" : ""}`}>{c.content}</p>
               </div>
             </div>
           ))}

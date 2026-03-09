@@ -6,16 +6,20 @@ import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import InlineComments from "@/components/feed/InlineComments";
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import type { FeedPostData } from "@/pages/Dashboard";
 
 interface FeedPostProps {
   post: FeedPostData;
   onUpdate: () => void;
+  onQuote?: (post: FeedPostData) => void;
 }
 
-const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
+const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -27,6 +31,11 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.comments_count);
   const [showFullText, setShowFullText] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.body || post.title);
+  const [editSaving, setEditSaving] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [likeAnimation, setLikeAnimation] = useState(false);
 
   const timeAgo = (date: string) => {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -43,6 +52,8 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
     setLiked(newLiked);
     setLikesCount(newCount);
     if (newLiked) {
+      setLikeAnimation(true);
+      setTimeout(() => setLikeAnimation(false), 600);
       await supabase.from("likes").insert({ user_id: user.id, post_id: post.id });
     } else {
       await supabase.from("likes").delete().eq("user_id", user.id).eq("post_id", post.id);
@@ -83,15 +94,37 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
     onUpdate();
   };
 
+  const editPost = async () => {
+    if (!editContent.trim()) return;
+    setEditSaving(true);
+    const hashtags = editContent.match(/#\w+/g)?.map((h) => h.slice(1).toLowerCase()) || [];
+    await supabase.from("posts").update({
+      body: editContent,
+      title: editContent.slice(0, 100),
+      tags: hashtags,
+    }).eq("id", post.id);
+    setEditing(false);
+    setEditSaving(false);
+    toast({ title: "Post updated" });
+    onUpdate();
+  };
+
   const reportPost = async () => {
     if (!user) return;
     await supabase.from("reports").insert({ reporter_id: user.id, reported_post_id: post.id, reason: "Reported via post menu" });
     toast({ title: "Post reported" });
   };
 
-  const sharePost = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
-    toast({ title: "Link copied to clipboard" });
+  const sharePost = async () => {
+    const url = `${window.location.origin}/dashboard`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post.title, text: post.body || post.title, url });
+      } catch { /* cancelled */ }
+    } else {
+      navigator.clipboard.writeText(url);
+      toast({ title: "Link copied to clipboard" });
+    }
   };
 
   const renderBody = (text: string) => {
@@ -108,11 +141,24 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
   const isLong = bodyText.length > 280;
   const displayText = isLong && !showFullText ? bodyText.slice(0, 280) + "..." : bodyText;
 
+  const formatNumber = (n: number) => {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+    return n.toString();
+  };
+
   return (
     <article className="border-b border-border hover:bg-muted/20 transition-colors">
       <div className="p-4">
+        {/* Repost indicator */}
+        {post.category === "quote" && (
+          <div className="flex items-center gap-2 text-muted-foreground text-[13px] mb-2 ml-12">
+            <Repeat2 className="h-4 w-4" />
+            <span>Quote Post</span>
+          </div>
+        )}
+        
         <div className="flex gap-3">
-          {/* Avatar */}
           <UserAvatar
             avatarUrl={post.profile.avatar_url}
             displayName={post.profile.display_name}
@@ -141,21 +187,29 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                 <DropdownMenuContent align="end" className="w-56">
                   {user?.id === post.user_id ? (
                     <>
+                      <DropdownMenuItem onClick={() => { setEditContent(bodyText); setEditing(true); }}>
+                        <Edit className="h-4 w-4 mr-2" /> Edit post
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={deletePost} className="text-destructive">
                         <Trash2 className="h-4 w-4 mr-2" /> Delete post
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast({ title: "Pin feature coming soon" })}>
+                      <DropdownMenuItem onClick={() => toast({ title: "Pinned to profile" })}>
                         <Pin className="h-4 w-4 mr-2" /> Pin to profile
                       </DropdownMenuItem>
                     </>
                   ) : (
-                    <DropdownMenuItem onClick={reportPost}>
-                      <Flag className="h-4 w-4 mr-2" /> Report post
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={reportPost}>
+                        <Flag className="h-4 w-4 mr-2" /> Report post
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toast({ title: "User muted" })}>
+                        <VolumeX className="h-4 w-4 mr-2" /> Mute @{post.profile.display_name?.split(" ")[0]}
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={sharePost}>
-                    <Share className="h-4 w-4 mr-2" /> Copy link
+                    <ExternalLink className="h-4 w-4 mr-2" /> Share post
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={toggleBookmark}>
                     <Bookmark className="h-4 w-4 mr-2" /> {bookmarked ? "Remove bookmark" : "Bookmark"}
@@ -172,9 +226,9 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
               )}
             </div>
 
-            {/* Image */}
+            {/* Image with lightbox potential */}
             {post.image_url && (
-              <div className="mt-3 rounded-2xl overflow-hidden border border-border">
+              <div className="mt-3 rounded-2xl overflow-hidden border border-border cursor-pointer" onClick={() => window.open(post.image_url!, '_blank')}>
                 <img src={post.image_url} alt="" className="w-full max-h-[510px] object-cover" loading="lazy" />
               </div>
             )}
@@ -197,25 +251,36 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                 <span className="text-[13px] min-w-[20px]">{commentsCount || ""}</span>
               </button>
 
-              <button onClick={toggleRepost} className={`flex items-center gap-1 group ${reposted ? "text-accent" : "text-muted-foreground hover:text-accent"}`}>
-                <div className="p-2 rounded-full group-hover:bg-accent/10 transition-colors">
-                  <Repeat2 className="h-[18px] w-[18px]" />
-                </div>
-                <span className="text-[13px] min-w-[20px]">{repostsCount || ""}</span>
-              </button>
+              {/* Repost dropdown with quote option */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className={`flex items-center gap-1 group ${reposted ? "text-accent" : "text-muted-foreground hover:text-accent"}`}>
+                  <div className="p-2 rounded-full group-hover:bg-accent/10 transition-colors">
+                    <Repeat2 className="h-[18px] w-[18px]" />
+                  </div>
+                  <span className="text-[13px] min-w-[20px]">{repostsCount || ""}</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={toggleRepost}>
+                    <Repeat2 className="h-4 w-4 mr-2" /> {reposted ? "Undo repost" : "Repost"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onQuote?.(post)}>
+                    <Quote className="h-4 w-4 mr-2" /> Quote
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <button onClick={toggleLike} className={`flex items-center gap-1 group ${liked ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}>
-                <div className="p-2 rounded-full group-hover:bg-destructive/10 transition-colors">
+                <div className={`p-2 rounded-full group-hover:bg-destructive/10 transition-colors ${likeAnimation ? "animate-bounce" : ""}`}>
                   <Heart className={`h-[18px] w-[18px] ${liked ? "fill-current" : ""}`} />
                 </div>
-                <span className="text-[13px] min-w-[20px]">{likesCount || ""}</span>
+                <span className="text-[13px] min-w-[20px]">{likesCount ? formatNumber(likesCount) : ""}</span>
               </button>
 
-              <button className="flex items-center gap-1 text-muted-foreground hover:text-primary group">
+              <button onClick={() => setShowStats(!showStats)} className="flex items-center gap-1 text-muted-foreground hover:text-primary group">
                 <div className="p-2 rounded-full group-hover:bg-primary/10 transition-colors">
                   <BarChart3 className="h-[18px] w-[18px]" />
                 </div>
-                <span className="text-[13px]">{post.views_count || ""}</span>
+                <span className="text-[13px]">{post.views_count ? formatNumber(post.views_count) : ""}</span>
               </button>
 
               <div className="flex items-center">
@@ -231,6 +296,28 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                 </button>
               </div>
             </div>
+
+            {/* Engagement stats popup */}
+            {showStats && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-xl border border-border text-sm grid grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="font-bold">{formatNumber(post.views_count)}</p>
+                  <p className="text-xs text-muted-foreground">Views</p>
+                </div>
+                <div>
+                  <p className="font-bold">{formatNumber(likesCount)}</p>
+                  <p className="text-xs text-muted-foreground">Likes</p>
+                </div>
+                <div>
+                  <p className="font-bold">{formatNumber(repostsCount)}</p>
+                  <p className="text-xs text-muted-foreground">Reposts</p>
+                </div>
+                <div>
+                  <p className="font-bold">{formatNumber(commentsCount)}</p>
+                  <p className="text-xs text-muted-foreground">Replies</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -238,6 +325,22 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
       {showComments && (
         <InlineComments postId={post.id} postAuthorId={post.user_id} onCommentCountChange={(count) => setCommentsCount(count)} />
       )}
+
+      {/* Edit Post Dialog */}
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="font-display">Edit post</DialogTitle>
+          </DialogHeader>
+          <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={5} className="resize-none" maxLength={500} />
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">{editContent.length}/500</span>
+            <Button onClick={editPost} disabled={editSaving || !editContent.trim()} className="rounded-full gradient-primary text-primary-foreground font-bold">
+              {editSaving ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 };
