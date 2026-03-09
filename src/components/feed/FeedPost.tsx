@@ -36,6 +36,23 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
   const [editSaving, setEditSaving] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [likeAnimation, setLikeAnimation] = useState(false);
+  const [isAuthorAdmin, setIsAuthorAdmin] = useState(false);
+  const [viewIncremented, setViewIncremented] = useState(false);
+
+  // Check if author is admin
+  useEffect(() => {
+    supabase.from("user_roles").select("role").eq("user_id", post.user_id).in("role", ["admin", "super_admin"]).then(({ data }) => {
+      setIsAuthorAdmin((data?.length || 0) > 0);
+    });
+  }, [post.user_id]);
+
+  // Auto increment view count
+  useEffect(() => {
+    if (!viewIncremented && user) {
+      setViewIncremented(true);
+      supabase.from("posts").update({ views_count: (post.views_count || 0) + 1 }).eq("id", post.id);
+    }
+  }, [post.id]);
 
   const timeAgo = (date: string) => {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
