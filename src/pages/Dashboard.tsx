@@ -6,7 +6,8 @@ import FeedPost from "@/components/feed/FeedPost";
 import TrendingSidebar from "@/components/feed/TrendingSidebar";
 import WhoToFollow from "@/components/feed/WhoToFollow";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles } from "lucide-react";
+import { Sparkles, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface FeedPostData {
   id: string;
@@ -37,7 +38,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [posts, setPosts] = useState<FeedPostData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"foryou" | "following">("foryou");
+  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState<"foryou" | "following" | "trending">("foryou");
+  const [quotedPost, setQuotedPost] = useState<FeedPostData | null>(null);
 
   const loadFeed = useCallback(async () => {
     if (!user) return;
@@ -63,6 +66,8 @@ const Dashboard = () => {
         setLoading(false);
         return;
       }
+    } else if (tab === "trending") {
+      query = query.order("likes_count", { ascending: false });
     }
 
     const { data: postsData } = await query;
@@ -105,32 +110,56 @@ const Dashboard = () => {
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadFeed();
+    setRefreshing(false);
+  };
+
+  const handleQuote = (post: FeedPostData) => {
+    setQuotedPost(post);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="flex justify-center">
       {/* Main Feed Column */}
       <div className="flex-1 min-w-0 max-w-[600px] border-x border-border">
         {/* Tabs header */}
         <div className="sticky top-0 lg:top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "foryou" | "following")}>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="w-full bg-transparent h-[53px] p-0 gap-0 rounded-none">
-              <TabsTrigger
-                value="foryou"
-                className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground"
-              >
-                For you
-              </TabsTrigger>
-              <TabsTrigger
-                value="following"
-                className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground"
-              >
-                Following
-              </TabsTrigger>
+              {[
+                { value: "foryou", label: "For you" },
+                { value: "following", label: "Following" },
+                { value: "trending", label: "Trending" },
+              ].map(t => (
+                <TabsTrigger
+                  key={t.value}
+                  value={t.value}
+                  className="flex-1 rounded-none border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-semibold text-[15px] h-full text-muted-foreground data-[state=active]:text-foreground"
+                >
+                  {t.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </div>
 
         {/* Composer */}
-        <PostComposer onPostCreated={loadFeed} />
+        <PostComposer
+          onPostCreated={loadFeed}
+          quotedPost={quotedPost ? { id: quotedPost.id, body: quotedPost.body || quotedPost.title, profile: quotedPost.profile } : null}
+          onClearQuote={() => setQuotedPost(null)}
+        />
+
+        {/* Refresh button */}
+        <div className="flex justify-center py-2 border-b border-border">
+          <Button variant="ghost" size="sm" onClick={handleRefresh} className="text-primary text-sm rounded-full gap-2" disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Refreshing..." : "Refresh feed"}
+          </Button>
+        </div>
 
         {/* Posts */}
         {loading ? (
@@ -153,16 +182,16 @@ const Dashboard = () => {
           <div className="text-center py-20 px-8">
             <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
             <p className="text-xl font-display font-bold">
-              {tab === "following" ? "No posts from people you follow" : "Welcome to Platform!"}
+              {tab === "following" ? "No posts from people you follow" : tab === "trending" ? "No trending posts yet" : "Welcome to Platform!"}
             </p>
             <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
               {tab === "following" ? "Follow some people to see their posts here." : "Create your first post or explore trending topics."}
             </p>
           </div>
         ) : (
-          <div>
+          <div className="pb-16 lg:pb-0">
             {posts.map((post) => (
-              <FeedPost key={post.id} post={post} onUpdate={loadFeed} />
+              <FeedPost key={post.id} post={post} onUpdate={loadFeed} onQuote={handleQuote} />
             ))}
           </div>
         )}

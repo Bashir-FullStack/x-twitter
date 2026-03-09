@@ -5,6 +5,7 @@ import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import {
   User, Settings, Bell, Search, Mail,
   FileText, Shield, BarChart3, LogOut, X, Zap,
@@ -208,10 +209,13 @@ const DashboardLayout = () => {
           <ThemeToggle />
         </header>
 
-        <main className="flex-1">
+        <main className="flex-1 pb-14 lg:pb-0">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav unreadNotifs={unreadNotifs} unreadMessages={unreadMessages} />
     </div>
   );
 };
