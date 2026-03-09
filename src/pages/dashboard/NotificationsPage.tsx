@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Bell, Check, CheckCheck, Trash2, Info, AlertTriangle, CheckCircle,
-  XCircle, Shield, Settings, Heart, MessageCircle, Repeat2, UserPlus,
+  XCircle, Shield, Settings as SettingsIcon, Heart, MessageCircle, Repeat2, UserPlus,
   AtSign, MoreHorizontal
 } from "lucide-react";
 import {
