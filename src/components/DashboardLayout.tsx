@@ -3,48 +3,43 @@ import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
 import { supabase } from "@/integrations/supabase/client";
+import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
-  LayoutDashboard, User, Settings, Bell, Search, MessageSquare,
-  FileText, Shield, BarChart3, LogOut, Menu, X, Zap, ChevronDown,
-  Users, ShieldAlert, Bookmark, Hash, UserPlus, MoreHorizontal, Feather,
-  Home, Compass, Mail, Heart, TrendingUp, HelpCircle
+  User, Settings, Bell, Search, Mail,
+  FileText, Shield, BarChart3, LogOut, X, Zap,
+  Users, ShieldAlert, Bookmark, MoreHorizontal, Feather, Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip, TooltipContent, TooltipTrigger
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [myProfile, setMyProfile] = useState<any>(null);
   const { user, signOut } = useAuth();
   const { isAdmin, isModerator } = useRole();
   const location = useLocation();
 
   useEffect(() => {
     if (!user) return;
-    // Fetch unread counts
     Promise.all([
       supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false),
       supabase.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", user.id).eq("is_read", false),
-    ]).then(([notifs, msgs]) => {
+      supabase.from("profiles").select("display_name, avatar_url").eq("user_id", user.id).single(),
+    ]).then(([notifs, msgs, profile]) => {
       setUnreadNotifs(notifs.count || 0);
       setUnreadMessages(msgs.count || 0);
+      setMyProfile(profile.data);
     });
 
-    // Realtime for notifications
     const channel = supabase.channel("layout-notifs")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
-        setUnreadNotifs(c => c + 1);
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=eq.${user.id}` }, () => {
-        setUnreadMessages(c => c + 1);
-      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => setUnreadNotifs(c => c + 1))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=eq.${user.id}` }, () => setUnreadMessages(c => c + 1))
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -77,7 +72,6 @@ const DashboardLayout = () => {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-[72px] xl:w-[275px] transform bg-background border-r border-border transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0 !w-[275px]" : "-translate-x-full"}`}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="flex h-14 items-center px-3 xl:px-4">
             <Link to="/dashboard" className="flex items-center gap-2.5 p-3 rounded-full hover:bg-muted transition-colors">
               <Zap className="h-7 w-7 text-primary" />
@@ -88,7 +82,6 @@ const DashboardLayout = () => {
             </button>
           </div>
 
-          {/* Nav */}
           <nav className="flex-1 space-y-0.5 px-2 xl:px-3 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = item.path === "/dashboard"
@@ -101,9 +94,7 @@ const DashboardLayout = () => {
                       to={item.path}
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center gap-5 rounded-full px-3 py-3 text-[15px] transition-all duration-150 group relative ${
-                        isActive
-                          ? "font-bold text-foreground"
-                          : "text-foreground/80 hover:bg-muted"
+                        isActive ? "font-bold text-foreground" : "text-foreground/80 hover:bg-muted"
                       }`}
                     >
                       <div className="relative">
@@ -122,7 +113,6 @@ const DashboardLayout = () => {
               );
             })}
 
-            {/* More dropdown */}
             <DropdownMenu>
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
@@ -162,22 +152,24 @@ const DashboardLayout = () => {
             </Link>
           </div>
 
-          {/* User menu at bottom */}
+          {/* User menu */}
           <div className="p-3 xl:px-4 pb-4">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-3 rounded-full p-2 xl:p-3 hover:bg-muted transition-colors w-full">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  {user?.email?.[0]?.toUpperCase() || "U"}
-                </div>
+                <UserAvatar
+                  avatarUrl={myProfile?.avatar_url}
+                  displayName={myProfile?.display_name || user?.email}
+                  className="h-10 w-10 shrink-0"
+                />
                 <div className="hidden xl:block flex-1 min-w-0 text-left">
-                  <p className="text-sm font-bold truncate">{user?.user_metadata?.display_name || user?.email?.split("@")[0]}</p>
+                  <p className="text-sm font-bold truncate">{myProfile?.display_name || user?.email?.split("@")[0]}</p>
                   <p className="text-xs text-muted-foreground truncate">@{user?.email?.split("@")[0]}</p>
                 </div>
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground hidden xl:block" />
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-64 p-1">
                 <div className="px-4 py-3">
-                  <p className="text-sm font-bold">{user?.user_metadata?.display_name || "User"}</p>
+                  <p className="text-sm font-bold">{myProfile?.display_name || "User"}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
@@ -186,9 +178,6 @@ const DashboardLayout = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="gap-3 py-2.5 px-4 rounded-lg">
                   <Link to="/dashboard/settings"><Settings className="h-4 w-4" /> Settings</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="gap-3 py-2.5 px-4 rounded-lg">
-                  <Link to="/dashboard/analytics"><BarChart3 className="h-4 w-4" /> Analytics</Link>
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem asChild className="gap-3 py-2.5 px-4 rounded-lg">
@@ -207,12 +196,13 @@ const DashboardLayout = () => {
 
       {/* Main */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Mobile header */}
         <header className="sticky top-0 z-30 flex h-[53px] items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="text-foreground">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-              {user?.email?.[0]?.toUpperCase() || "U"}
-            </div>
+            <UserAvatar
+              avatarUrl={myProfile?.avatar_url}
+              displayName={myProfile?.display_name || user?.email}
+              className="h-8 w-8"
+            />
           </button>
           <Zap className="h-6 w-6 text-primary" />
           <ThemeToggle />

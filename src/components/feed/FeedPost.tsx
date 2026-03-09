@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import UserAvatar from "@/components/UserAvatar";
 import InlineComments from "@/components/feed/InlineComments";
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, UserPlus, UserMinus } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { FeedPostData } from "@/pages/Dashboard";
 
@@ -84,11 +85,7 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
 
   const reportPost = async () => {
     if (!user) return;
-    await supabase.from("reports").insert({
-      reporter_id: user.id,
-      reported_post_id: post.id,
-      reason: "Reported via post menu",
-    });
+    await supabase.from("reports").insert({ reporter_id: user.id, reported_post_id: post.id, reason: "Reported via post menu" });
     toast({ title: "Post reported" });
   };
 
@@ -100,15 +97,9 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
   const renderBody = (text: string) => {
     const parts = text.split(/(#\w+|@\w+|https?:\/\/\S+)/g);
     return parts.map((part, i) => {
-      if (part.startsWith("#")) {
-        return <span key={i} className="text-primary hover:underline cursor-pointer">{part}</span>;
-      }
-      if (part.startsWith("@")) {
-        return <span key={i} className="text-primary hover:underline cursor-pointer">{part}</span>;
-      }
-      if (part.startsWith("http")) {
-        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{part}</a>;
-      }
+      if (part.startsWith("#")) return <span key={i} className="text-primary hover:underline cursor-pointer">{part}</span>;
+      if (part.startsWith("@")) return <span key={i} className="text-primary hover:underline cursor-pointer">{part}</span>;
+      if (part.startsWith("http")) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{part}</a>;
       return part;
     });
   };
@@ -122,12 +113,12 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
       <div className="p-4">
         <div className="flex gap-3">
           {/* Avatar */}
-          <div
-            className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary cursor-pointer hover:opacity-80"
+          <UserAvatar
+            avatarUrl={post.profile.avatar_url}
+            displayName={post.profile.display_name}
+            className="h-10 w-10 shrink-0"
             onClick={() => navigate(`/dashboard/user/${post.profile.user_id}`)}
-          >
-            {post.profile.display_name?.[0]?.toUpperCase() || "U"}
-          </div>
+          />
 
           <div className="flex-1 min-w-0">
             {/* Header */}
@@ -141,7 +132,7 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                 </span>
                 {post.profile.is_verified && <VerifiedBadge className="h-[18px] w-[18px] shrink-0" />}
                 <span className="text-muted-foreground text-[15px]">·</span>
-                <span className="text-muted-foreground text-[15px] shrink-0 hover:underline cursor-pointer">{timeAgo(post.created_at)}</span>
+                <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo(post.created_at)}</span>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger className="text-muted-foreground hover:text-primary p-2 -m-2 rounded-full hover:bg-primary/10 transition-colors">
@@ -158,17 +149,15 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                       </DropdownMenuItem>
                     </>
                   ) : (
-                    <>
-                      <DropdownMenuItem onClick={reportPost}>
-                        <Flag className="h-4 w-4 mr-2" /> Report post
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem onClick={reportPost}>
+                      <Flag className="h-4 w-4 mr-2" /> Report post
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={sharePost}>
                     <Share className="h-4 w-4 mr-2" /> Copy link
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { toggleBookmark(); }}>
+                  <DropdownMenuItem onClick={toggleBookmark}>
                     <Bookmark className="h-4 w-4 mr-2" /> {bookmarked ? "Remove bookmark" : "Bookmark"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -179,9 +168,7 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
             <div className="mt-0.5 text-[15px] leading-[20px] whitespace-pre-wrap break-words">
               {renderBody(displayText)}
               {isLong && !showFullText && (
-                <button onClick={() => setShowFullText(true)} className="text-primary hover:underline text-sm ml-1">
-                  Show more
-                </button>
+                <button onClick={() => setShowFullText(true)} className="text-primary hover:underline text-sm ml-1">Show more</button>
               )}
             </div>
 
@@ -203,40 +190,27 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
 
             {/* Actions bar */}
             <div className="flex items-center justify-between mt-3 -ml-2">
-              {/* Comment */}
-              <button
-                onClick={() => setShowComments(!showComments)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-primary group"
-              >
+              <button onClick={() => setShowComments(!showComments)} className="flex items-center gap-1 text-muted-foreground hover:text-primary group">
                 <div className="p-2 rounded-full group-hover:bg-primary/10 transition-colors">
                   <MessageCircle className="h-[18px] w-[18px]" />
                 </div>
                 <span className="text-[13px] min-w-[20px]">{commentsCount || ""}</span>
               </button>
 
-              {/* Repost */}
-              <button
-                onClick={toggleRepost}
-                className={`flex items-center gap-1 group ${reposted ? "text-accent" : "text-muted-foreground hover:text-accent"}`}
-              >
+              <button onClick={toggleRepost} className={`flex items-center gap-1 group ${reposted ? "text-accent" : "text-muted-foreground hover:text-accent"}`}>
                 <div className="p-2 rounded-full group-hover:bg-accent/10 transition-colors">
                   <Repeat2 className="h-[18px] w-[18px]" />
                 </div>
                 <span className="text-[13px] min-w-[20px]">{repostsCount || ""}</span>
               </button>
 
-              {/* Like */}
-              <button
-                onClick={toggleLike}
-                className={`flex items-center gap-1 group ${liked ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}
-              >
+              <button onClick={toggleLike} className={`flex items-center gap-1 group ${liked ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}>
                 <div className="p-2 rounded-full group-hover:bg-destructive/10 transition-colors">
                   <Heart className={`h-[18px] w-[18px] ${liked ? "fill-current" : ""}`} />
                 </div>
                 <span className="text-[13px] min-w-[20px]">{likesCount || ""}</span>
               </button>
 
-              {/* Views */}
               <button className="flex items-center gap-1 text-muted-foreground hover:text-primary group">
                 <div className="p-2 rounded-full group-hover:bg-primary/10 transition-colors">
                   <BarChart3 className="h-[18px] w-[18px]" />
@@ -244,12 +218,8 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
                 <span className="text-[13px]">{post.views_count || ""}</span>
               </button>
 
-              {/* Bookmark + Share */}
               <div className="flex items-center">
-                <button
-                  onClick={toggleBookmark}
-                  className={`group ${bookmarked ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                >
+                <button onClick={toggleBookmark} className={`group ${bookmarked ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>
                   <div className="p-2 rounded-full group-hover:bg-primary/10 transition-colors">
                     <Bookmark className={`h-[18px] w-[18px] ${bookmarked ? "fill-current" : ""}`} />
                   </div>
@@ -265,13 +235,8 @@ const FeedPost = ({ post, onUpdate }: FeedPostProps) => {
         </div>
       </div>
 
-      {/* Inline Comments */}
       {showComments && (
-        <InlineComments
-          postId={post.id}
-          postAuthorId={post.user_id}
-          onCommentCountChange={(count) => setCommentsCount(count)}
-        />
+        <InlineComments postId={post.id} postAuthorId={post.user_id} onCommentCountChange={(count) => setCommentsCount(count)} />
       )}
     </article>
   );

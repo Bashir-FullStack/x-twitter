@@ -5,12 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import UserAvatar from "@/components/UserAvatar";
 import { useToast } from "@/hooks/use-toast";
 
 interface UserSuggestion {
   user_id: string;
   display_name: string | null;
   bio: string | null;
+  avatar_url: string | null;
   is_verified: boolean;
   following: boolean;
 }
@@ -28,13 +30,12 @@ const WhoToFollow = () => {
 
   const loadSuggestions = async () => {
     if (!user) return;
-
     const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
     const followingIds = new Set(following?.map((f) => f.following_id) || []);
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, display_name, bio, is_verified")
+      .select("user_id, display_name, bio, is_verified, avatar_url")
       .neq("user_id", user.id)
       .limit(20);
 
@@ -75,9 +76,7 @@ const WhoToFollow = () => {
             className="flex items-center gap-3 px-6 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
             onClick={() => navigate(`/dashboard/user/${u.user_id}`)}
           >
-            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-              {u.display_name?.[0]?.toUpperCase() || "U"}
-            </div>
+            <UserAvatar avatarUrl={u.avatar_url} displayName={u.display_name} className="h-10 w-10 shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className="font-bold text-sm truncate">{u.display_name || "User"}</span>

@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import VerifiedBadge from "@/components/VerifiedBadge";
-import { Send, Trash2, Heart } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
+import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Comment {
@@ -14,9 +15,7 @@ interface Comment {
   content: string;
   created_at: string;
   isAuthorReply: boolean;
-  profile?: { display_name: string | null; is_verified: boolean };
-  likesCount: number;
-  likedByMe: boolean;
+  profile?: { display_name: string | null; is_verified: boolean; avatar_url: string | null };
 }
 
 interface InlineCommentsProps {
@@ -34,35 +33,31 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [myProfile, setMyProfile] = useState<any>(null);
 
   useEffect(() => {
     loadComments();
+    if (user) {
+      supabase.from("profiles").select("display_name, avatar_url").eq("user_id", user.id).single().then(({ data }) => setMyProfile(data));
+    }
   }, [postId]);
 
   const loadComments = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("comments")
-      .select("*")
-      .eq("post_id", postId)
-      .order("created_at", { ascending: true });
-
+    const { data } = await supabase.from("comments").select("*").eq("post_id", postId).order("created_at", { ascending: true });
     if (!data) { setLoading(false); return; }
-    const userIds = [...new Set(data.map((c) => c.user_id))];
 
+    const userIds = [...new Set(data.map((c) => c.user_id))];
     const { data: profiles } = userIds.length > 0
-      ? await supabase.from("profiles").select("user_id, display_name, is_verified").in("user_id", userIds)
+      ? await supabase.from("profiles").select("user_id, display_name, is_verified, avatar_url").in("user_id", userIds)
       : { data: [] };
 
     const mapped: Comment[] = data.map((c) => ({
       ...c,
       isAuthorReply: c.user_id === postAuthorId,
-      profile: profiles?.find((p) => p.user_id === c.user_id) || { display_name: "User", is_verified: false },
-      likesCount: 0,
-      likedByMe: false,
+      profile: profiles?.find((p) => p.user_id === c.user_id) || { display_name: "User", is_verified: false, avatar_url: null },
     }));
 
-    // Sort: author replies (pinned) first, then by date
     mapped.sort((a, b) => {
       if (a.isAuthorReply && !b.isAuthorReply) return -1;
       if (!a.isAuthorReply && b.isAuthorReply) return 1;
@@ -103,9 +98,11 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
     <div className="border-t border-border bg-muted/10">
       {/* Comment input */}
       <div className="flex gap-3 p-3 px-4 border-b border-border/50">
-        <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-          {user?.user_metadata?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
-        </div>
+        <UserAvatar
+          avatarUrl={myProfile?.avatar_url}
+          displayName={myProfile?.display_name || user?.email}
+          className="h-8 w-8 shrink-0"
+        />
         <div className="flex-1 flex gap-2">
           <Textarea
             value={newComment}
@@ -126,7 +123,6 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
         </div>
       </div>
 
-      {/* Comments list */}
       {loading ? (
         <div className="p-4 text-center text-sm text-muted-foreground">Loading replies...</div>
       ) : (
@@ -135,17 +131,15 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
             <div
               key={c.id}
               className={`flex gap-3 p-3 px-4 border-b border-border/30 transition-colors ${
-                c.isAuthorReply
-                  ? "bg-primary/5 border-l-2 border-l-primary"
-                  : "hover:bg-muted/20"
+                c.isAuthorReply ? "bg-primary/5 border-l-2 border-l-primary" : "hover:bg-muted/20"
               }`}
             >
-              <div
-                className="h-8 w-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary cursor-pointer"
+              <UserAvatar
+                avatarUrl={c.profile?.avatar_url}
+                displayName={c.profile?.display_name}
+                className="h-8 w-8 shrink-0"
                 onClick={() => navigate(`/dashboard/user/${c.user_id}`)}
-              >
-                {c.profile?.display_name?.[0]?.toUpperCase() || "U"}
-              </div>
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1 flex-wrap">
                   <span
@@ -159,7 +153,7 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
                     <span className="text-[10px] font-semibold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">Author</span>
                   )}
                   <span className="text-xs text-muted-foreground">· {timeAgo(c.created_at)}</span>
-                  {(user?.id === c.user_id) && (
+                  {user?.id === c.user_id && (
                     <button onClick={() => deleteComment(c.id)} className="ml-auto text-muted-foreground hover:text-destructive transition-colors">
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -171,18 +165,13 @@ const InlineComments = ({ postId, postAuthorId, onCommentCountChange }: InlineCo
           ))}
 
           {comments.length > 3 && !showAll && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="w-full p-3 text-sm text-primary hover:bg-muted/30 transition-colors font-medium"
-            >
+            <button onClick={() => setShowAll(true)} className="w-full p-3 text-sm text-primary hover:bg-muted/30 transition-colors font-medium">
               Show {comments.length - 3} more replies
             </button>
           )}
 
           {comments.length === 0 && !loading && (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No replies yet — be the first to reply!
-            </div>
+            <div className="p-4 text-center text-sm text-muted-foreground">No replies yet — be the first to reply!</div>
           )}
         </div>
       )}

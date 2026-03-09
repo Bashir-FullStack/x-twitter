@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
+import UserAvatar from "@/components/UserAvatar";
 import FeedPost from "@/components/feed/FeedPost";
-import { ArrowLeft, Calendar, MapPin, Link as LinkIcon, Camera, X } from "lucide-react";
+import { ArrowLeft, Calendar, Camera, X, MapPin, LinkIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { uploadAvatar, getAvatarUrl } from "@/lib/avatar";
 import type { FeedPostData } from "@/pages/Dashboard";
 
 const ProfilePage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<FeedPostData[]>([]);
@@ -27,6 +30,8 @@ const ProfilePage = () => {
   const [editForm, setEditForm] = useState({ display_name: "", bio: "", phone: "" });
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState("posts");
+  const [uploading, setUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -80,9 +85,32 @@ const ProfilePage = () => {
         bookmarked: bookmarkedSet.has(p.id),
         reposted: repostedSet.has(p.id),
       })));
+    } else {
+      setPosts([]);
     }
 
     setLoading(false);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await uploadAvatar(user.id, file);
+      setAvatarPreview(URL.createObjectURL(file));
+      toast({ title: "Profile picture updated!" });
+      loadProfile();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+    setUploading(false);
   };
 
   const handleSave = async () => {
@@ -99,13 +127,15 @@ const ProfilePage = () => {
     setSaving(false);
   };
 
+  const avatarUrl = avatarPreview || getAvatarUrl(profile?.avatar_url);
+
   if (loading) {
     return (
       <div className="max-w-[600px] border-x border-border min-h-screen mx-auto lg:mx-0">
         <div className="animate-pulse">
           <div className="h-48 bg-muted" />
           <div className="px-4 pb-4">
-            <div className="h-20 w-20 rounded-full bg-muted -mt-10 border-4 border-background" />
+            <div className="h-[134px] w-[134px] rounded-full bg-muted -mt-[67px] border-4 border-background" />
             <div className="h-5 w-32 bg-muted rounded mt-3" />
             <div className="h-4 w-48 bg-muted rounded mt-2" />
           </div>
@@ -116,6 +146,9 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-[600px] border-x border-border min-h-screen mx-auto lg:mx-0">
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md h-[53px] flex items-center gap-6 px-4 border-b border-border">
         <button onClick={() => navigate(-1)} className="hover:bg-muted rounded-full p-1.5 transition-colors">
@@ -133,9 +166,30 @@ const ProfilePage = () => {
       {/* Banner */}
       <div className="relative">
         <div className="h-48 bg-gradient-to-br from-primary/30 via-primary/10 to-accent/20" />
-        <div className="absolute -bottom-16 left-4">
-          <div className="h-[134px] w-[134px] rounded-full border-4 border-background bg-muted flex items-center justify-center text-4xl font-bold text-primary">
-            {profile?.display_name?.[0]?.toUpperCase() || "U"}
+        {/* Avatar with camera overlay */}
+        <div className="absolute -bottom-[67px] left-4">
+          <div className="relative group">
+            <div className="h-[134px] w-[134px] rounded-full border-4 border-background overflow-hidden bg-muted">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={profile?.display_name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-4xl font-bold text-primary bg-primary/10">
+                  {profile?.display_name?.[0]?.toUpperCase() || "U"}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              <Camera className="h-8 w-8 text-white" />
+            </button>
+            {uploading && (
+              <div className="absolute inset-0 rounded-full bg-foreground/60 flex items-center justify-center">
+                <div className="h-8 w-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -148,7 +202,7 @@ const ProfilePage = () => {
       </div>
 
       {/* Profile Info */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 mt-4">
         <h2 className="font-display text-xl font-bold flex items-center gap-1">
           {profile?.display_name}
           {profile?.is_verified && <VerifiedBadge className="h-5 w-5" />}
@@ -162,10 +216,10 @@ const ProfilePage = () => {
           </span>
         </div>
         <div className="flex gap-5 mt-3">
-          <span className="text-[15px]">
+          <span className="text-[15px] cursor-pointer hover:underline">
             <strong>{followingCount}</strong> <span className="text-muted-foreground">Following</span>
           </span>
-          <span className="text-[15px]">
+          <span className="text-[15px] cursor-pointer hover:underline">
             <strong>{followersCount}</strong> <span className="text-muted-foreground">Followers</span>
           </span>
         </div>
@@ -202,13 +256,44 @@ const ProfilePage = () => {
             <DialogTitle className="font-display">Edit profile</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            {/* Avatar in edit dialog */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <div className="h-16 w-16 rounded-full overflow-hidden bg-muted">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xl font-bold text-primary bg-primary/10">
+                      {editForm.display_name?.[0]?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                  <Camera className="h-5 w-5 text-white" />
+                </button>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Profile picture</p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {uploading ? "Uploading..." : "Change photo"}
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>Name</Label>
-              <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} />
+              <Input value={editForm.display_name} onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })} maxLength={50} />
+              <p className="text-xs text-muted-foreground text-right">{editForm.display_name.length}/50</p>
             </div>
             <div className="space-y-2">
               <Label>Bio</Label>
-              <Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell the world about yourself" rows={3} className="resize-none" />
+              <Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell the world about yourself" rows={3} className="resize-none" maxLength={160} />
               <p className="text-xs text-muted-foreground text-right">{editForm.bio.length}/160</p>
             </div>
             <div className="space-y-2">
