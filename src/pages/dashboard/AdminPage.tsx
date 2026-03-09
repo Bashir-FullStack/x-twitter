@@ -45,6 +45,7 @@ const AdminPage = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [suggestedFollowIds, setSuggestedFollowIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ users: 0, posts: 0, groups: 0, reports: 0 });
