@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import InlineComments from "@/components/feed/InlineComments";
-import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink, Shield, Eye, Copy, Link2 } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink, Shield, Eye, Copy, Link2, Play } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +42,16 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
   const lastTapRef = useRef(0);
   const [doubleTapHeart, setDoubleTapHeart] = useState(false);
 
+  // Sync state when post prop changes
+  useEffect(() => {
+    setLiked(post.liked);
+    setLikesCount(post.likes_count);
+    setBookmarked(post.bookmarked);
+    setReposted(post.reposted);
+    setRepostsCount(post.reposts_count);
+    setCommentsCount(post.comments_count);
+  }, [post.id, post.liked, post.bookmarked, post.reposted, post.likes_count, post.reposts_count, post.comments_count]);
+
   useEffect(() => {
     supabase.from("user_roles").select("role").eq("user_id", post.user_id).in("role", ["admin", "super_admin"]).then(({ data }) => {
       setIsAuthorAdmin((data?.length || 0) > 0);
@@ -73,7 +83,6 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
       setLikeAnimation(true);
       setTimeout(() => setLikeAnimation(false), 600);
       await supabase.from("likes").insert({ user_id: user.id, post_id: post.id });
-      // Send notification to post author
       if (post.user_id !== user.id) {
         await supabase.from("notifications").insert({ user_id: post.user_id, title: `${user.email?.split("@")[0]} liked your post`, body: post.title?.slice(0, 80), type: "like", link: `/dashboard/post/${post.id}` });
       }
@@ -83,7 +92,6 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
     await supabase.from("posts").update({ likes_count: newCount }).eq("id", post.id);
   };
 
-  // Double tap to like
   const handleDoubleTap = () => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
@@ -111,19 +119,38 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
 
   const toggleRepost = async () => {
     if (!user) return;
-    const newReposted = !reposted;
-    const newCount = newReposted ? repostsCount + 1 : repostsCount - 1;
-    setReposted(newReposted);
-    setRepostsCount(newCount);
-    if (newReposted) {
-      await supabase.from("reposts").insert({ user_id: user.id, post_id: post.id });
-      if (post.user_id !== user.id) {
-        await supabase.from("notifications").insert({ user_id: post.user_id, title: `${user.email?.split("@")[0]} reposted your post`, type: "repost", link: `/dashboard/post/${post.id}` });
+    try {
+      if (reposted) {
+        // Undo repost
+        const { error } = await supabase.from("reposts").delete().eq("user_id", user.id).eq("post_id", post.id);
+        if (error) throw error;
+        const newCount = Math.max(0, repostsCount - 1);
+        setReposted(false);
+        setRepostsCount(newCount);
+        await supabase.from("posts").update({ reposts_count: newCount }).eq("id", post.id);
+        toast({ title: "Repost removed" });
+      } else {
+        // Check if already reposted (avoid duplicate)
+        const { data: existing } = await supabase.from("reposts").select("id").eq("user_id", user.id).eq("post_id", post.id).maybeSingle();
+        if (existing) {
+          setReposted(true);
+          toast({ title: "Already reposted" });
+          return;
+        }
+        const { error } = await supabase.from("reposts").insert({ user_id: user.id, post_id: post.id });
+        if (error) throw error;
+        const newCount = repostsCount + 1;
+        setReposted(true);
+        setRepostsCount(newCount);
+        await supabase.from("posts").update({ reposts_count: newCount }).eq("id", post.id);
+        if (post.user_id !== user.id) {
+          await supabase.from("notifications").insert({ user_id: post.user_id, title: `${user.email?.split("@")[0]} reposted your post`, type: "repost", link: `/dashboard/post/${post.id}` });
+        }
+        toast({ title: "Reposted!" });
       }
-    } else {
-      await supabase.from("reposts").delete().eq("user_id", user.id).eq("post_id", post.id);
+    } catch (err: any) {
+      toast({ title: "Repost failed", description: err.message, variant: "destructive" });
     }
-    await supabase.from("posts").update({ reposts_count: newCount }).eq("id", post.id);
   };
 
   const deletePost = async () => {
@@ -164,8 +191,9 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
     toast({ title: "Text copied" });
   };
 
+  const isVideoUrl = (url: string) => /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
+
   const renderBody = (text: string) => {
-    // Detect URLs for link previews
     const parts = text.split(/(#\w+|@\w+|https?:\/\/\S+)/g);
     return parts.map((part, i) => {
       if (part.startsWith("#")) return <span key={i} className="text-primary hover:underline cursor-pointer">{part}</span>;
@@ -197,8 +225,7 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
             <Repeat2 className="h-4 w-4" /><span>Quote Post</span>
           </div>
         )}
-        
-        {/* Double tap heart animation */}
+
         {doubleTapHeart && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
             <Heart className="h-20 w-20 text-destructive fill-current animate-ping" />
@@ -209,7 +236,6 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
           <UserAvatar avatarUrl={post.profile.avatar_url} displayName={post.profile.display_name} className="h-10 w-10 shrink-0" onClick={() => navigate(`/dashboard/user/${post.profile.user_id}`)} />
 
           <div className="flex-1 min-w-0">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 min-w-0">
                 <span className="font-bold text-[15px] truncate hover:underline cursor-pointer" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/user/${post.profile.user_id}`); }}>
@@ -248,7 +274,6 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
               </DropdownMenu>
             </div>
 
-            {/* Content - click to navigate to post detail */}
             <div className="mt-0.5 text-[15px] leading-[20px] whitespace-pre-wrap break-words cursor-pointer" onClick={() => navigate(`/dashboard/post/${post.id}`)}>
               {renderBody(displayText)}
               {isLong && !showFullText && (
@@ -256,14 +281,17 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
               )}
             </div>
 
-            {/* Image */}
+            {/* Image or Video */}
             {post.image_url && (
               <div className="mt-3 rounded-2xl overflow-hidden border border-border cursor-pointer relative" onClick={(e) => { e.stopPropagation(); setShowImageLightbox(true); }}>
-                <img src={post.image_url} alt="" className="w-full max-h-[510px] object-cover" loading="lazy" />
+                {isVideoUrl(post.image_url) ? (
+                  <video src={post.image_url} controls className="w-full max-h-[510px] object-cover" preload="metadata" />
+                ) : (
+                  <img src={post.image_url} alt="" className="w-full max-h-[510px] object-cover" loading="lazy" />
+                )}
               </div>
             )}
 
-            {/* Tags */}
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {post.tags.map((tag) => (
@@ -285,8 +313,8 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
                   <span className="text-[13px] min-w-[20px]">{repostsCount || ""}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem onClick={toggleRepost}><Repeat2 className="h-4 w-4 mr-2" /> {reposted ? "Undo repost" : "Repost"}</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onQuote?.(post)}><Quote className="h-4 w-4 mr-2" /> Quote</DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); toggleRepost(); }}><Repeat2 className="h-4 w-4 mr-2" /> {reposted ? "Undo repost" : "Repost"}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onQuote?.(post); }}><Quote className="h-4 w-4 mr-2" /> Quote</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -345,13 +373,17 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
       </Dialog>
 
       {/* Image Lightbox */}
-      <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0">
-          {post.image_url && (
-            <img src={post.image_url} alt="" className="w-full max-h-[90vh] object-contain rounded-xl" />
-          )}
-        </DialogContent>
-      </Dialog>
+      {post.image_url && (
+        <Dialog open={showImageLightbox} onOpenChange={setShowImageLightbox}>
+          <DialogContent className="max-w-4xl p-0 bg-black/95 border-0">
+            {isVideoUrl(post.image_url) ? (
+              <video src={post.image_url} controls autoPlay className="w-full max-h-[90vh] object-contain" />
+            ) : (
+              <img src={post.image_url} alt="" className="w-full max-h-[90vh] object-contain" />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </article>
   );
 };

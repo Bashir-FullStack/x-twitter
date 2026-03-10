@@ -26,6 +26,8 @@ import PostDetailPage from "./pages/dashboard/PostDetailPage";
 import HelpPage from "./pages/dashboard/HelpPage";
 import TermsPage from "./pages/dashboard/TermsPage";
 import PrivacyPage from "./pages/dashboard/PrivacyPage";
+import VerificationPage from "./pages/dashboard/VerificationPage";
+import ReferralPage from "./pages/dashboard/ReferralPage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -68,6 +70,8 @@ const App = () => (
                 <Route path="help" element={<HelpPage />} />
                 <Route path="terms" element={<TermsPage />} />
                 <Route path="privacy" element={<PrivacyPage />} />
+                <Route path="verification" element={<VerificationPage />} />
+                <Route path="referrals" element={<ReferralPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -1,16 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import UserAvatar from "@/components/UserAvatar";
-import { Image, BarChart3, Smile, MapPin, Globe, X, Clock, FileText } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { getAvatarUrl } from "@/lib/avatar";
-import { useEffect } from "react";
+import { Image, BarChart3, Smile, MapPin, Globe, X, FileText, Video } from "lucide-react";
 
 interface PostComposerProps {
   onPostCreated: () => void;
@@ -26,14 +21,13 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
   const [content, setContent] = useState("");
   const [posting, setPosting] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [isDraft, setIsDraft] = useState(false);
   const [myProfile, setMyProfile] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -42,21 +36,25 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
     }
   }, [user]);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "video") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Max 10MB", variant: "destructive" });
+    const maxSize = type === "video" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast({ title: "File too large", description: `Max ${type === "video" ? "50MB" : "10MB"}`, variant: "destructive" });
       return;
     }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setMediaFile(file);
+    setMediaType(type);
+    setMediaPreview(URL.createObjectURL(file));
   };
 
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (videoInputRef.current) videoInputRef.current.value = "";
   };
 
   const addEmoji = (emoji: string) => {
@@ -66,36 +64,35 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
   };
 
   const handlePost = async (asDraft = false) => {
-    if (!user || (!content.trim() && !imageFile)) return;
+    if (!user || (!content.trim() && !mediaFile)) return;
     setPosting(true);
 
-    let imageUrl: string | null = null;
+    let mediaUrl: string | null = null;
 
-    // Upload image if selected
-    if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
+    if (mediaFile) {
+      const ext = mediaFile.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, imageFile, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("post-images").upload(path, mediaFile, { upsert: true });
       if (uploadError) {
-        toast({ title: "Image upload failed", description: uploadError.message, variant: "destructive" });
+        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
         setPosting(false);
         return;
       }
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      imageUrl = `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`;
+      mediaUrl = `${SUPABASE_URL}/storage/v1/object/public/post-images/${path}`;
     }
 
     const hashtags = content.match(/#\w+/g)?.map((h) => h.slice(1).toLowerCase()) || [];
     const status = asDraft ? "draft" : "published";
 
     const { error } = await supabase.from("posts").insert({
-      title: content.slice(0, 100) || "Image post",
+      title: content.slice(0, 100) || (mediaType === "video" ? "Video post" : "Image post"),
       body: content,
       user_id: user.id,
       status,
       tags: hashtags,
       category: quotedPost ? "quote" : "post",
-      image_url: imageUrl,
+      image_url: mediaUrl,
     });
 
     if (error) {
@@ -106,7 +103,7 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
       }
       setContent("");
       setFocused(false);
-      removeImage();
+      removeMedia();
       onClearQuote?.();
       toast({ title: asDraft ? "Saved as draft" : "Posted!" });
       onPostCreated();
@@ -121,14 +118,11 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
 
   return (
     <div className="border-b border-border p-4">
-      <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleImageSelect} />
-      
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleMediaSelect(e, "image")} />
+      <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/ogg,video/mov" className="hidden" onChange={(e) => handleMediaSelect(e, "video")} />
+
       <div className="flex gap-3">
-        <UserAvatar
-          avatarUrl={myProfile?.avatar_url}
-          displayName={myProfile?.display_name || user?.email}
-          className="h-10 w-10 shrink-0"
-        />
+        <UserAvatar avatarUrl={myProfile?.avatar_url} displayName={myProfile?.display_name || user?.email} className="h-10 w-10 shrink-0" />
         <div className="flex-1">
           {focused && (
             <div className="flex items-center gap-1 mb-2">
@@ -147,7 +141,6 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
             rows={focused ? 3 : 1}
           />
 
-          {/* Quoted post preview */}
           {quotedPost && (
             <div className="mt-2 border border-border rounded-xl p-3 relative">
               <button onClick={onClearQuote} className="absolute top-2 right-2 p-1 rounded-full bg-foreground/10 hover:bg-foreground/20">
@@ -160,20 +153,20 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
             </div>
           )}
 
-          {/* Image Preview */}
-          {imagePreview && (
+          {/* Media Preview */}
+          {mediaPreview && (
             <div className="relative mt-3 rounded-2xl overflow-hidden border border-border">
-              <img src={imagePreview} alt="Upload preview" className="w-full max-h-[300px] object-cover" />
-              <button
-                onClick={removeImage}
-                className="absolute top-2 right-2 bg-foreground/70 text-background rounded-full p-1.5 hover:bg-foreground/90 transition-colors"
-              >
+              {mediaType === "video" ? (
+                <video src={mediaPreview} controls className="w-full max-h-[300px] object-cover" />
+              ) : (
+                <img src={mediaPreview} alt="Upload preview" className="w-full max-h-[300px] object-cover" />
+              )}
+              <button onClick={removeMedia} className="absolute top-2 right-2 bg-foreground/70 text-background rounded-full p-1.5 hover:bg-foreground/90 transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
           )}
 
-          {/* Emoji Picker */}
           {showEmojis && (
             <div className="mt-2 p-2 bg-muted rounded-xl flex flex-wrap gap-1">
               {EMOJI_LIST.map(emoji => (
@@ -188,6 +181,9 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
             <div className="flex items-center gap-0">
               <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full" onClick={() => fileInputRef.current?.click()}>
                 <Image className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full" onClick={() => videoInputRef.current?.click()}>
+                <Video className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full">
                 <BarChart3 className="h-5 w-5" />
@@ -218,7 +214,7 @@ const PostComposer = ({ onPostCreated, quotedPost, onClearQuote }: PostComposerP
               )}
               <Button
                 onClick={() => handlePost(false)}
-                disabled={(!content.trim() && !imageFile) || posting || isOverLimit}
+                disabled={(!content.trim() && !mediaFile) || posting || isOverLimit}
                 className="gradient-primary text-primary-foreground rounded-full px-5 h-9 font-bold text-[15px]"
               >
                 {posting ? "..." : "Post"}

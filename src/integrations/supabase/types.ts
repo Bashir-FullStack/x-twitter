@@ -493,9 +493,11 @@ export type Database = {
           display_name: string | null
           id: string
           is_verified: boolean
+          last_seen: string | null
           onboarding_completed: boolean
           phone: string | null
           privacy_settings: Json | null
+          terms_accepted: boolean
           updated_at: string
           user_id: string
         }
@@ -506,9 +508,11 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_verified?: boolean
+          last_seen?: string | null
           onboarding_completed?: boolean
           phone?: string | null
           privacy_settings?: Json | null
+          terms_accepted?: boolean
           updated_at?: string
           user_id: string
         }
@@ -519,11 +523,43 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_verified?: boolean
+          last_seen?: string | null
           onboarding_completed?: boolean
           phone?: string | null
           privacy_settings?: Json | null
+          terms_accepted?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_email: string | null
+          referred_user_id: string | null
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_email?: string | null
+          referred_user_id?: string | null
+          referrer_id?: string
+          status?: string
         }
         Relationships: []
       }
@@ -638,6 +674,45 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          followers_count: number
+          has_violations: boolean
+          id: string
+          likes_count: number
+          referrals_count: number
+          resolved_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          followers_count?: number
+          has_violations?: boolean
+          id?: string
+          likes_count?: number
+          referrals_count?: number
+          resolved_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          followers_count?: number
+          has_violations?: boolean
+          id?: string
+          likes_count?: number
+          referrals_count?: number
+          resolved_at?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: []
