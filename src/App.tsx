@@ -70,6 +70,8 @@ const App = () => (
                 <Route path="help" element={<HelpPage />} />
                 <Route path="terms" element={<TermsPage />} />
                 <Route path="privacy" element={<PrivacyPage />} />
+                <Route path="verification" element={<VerificationPage />} />
+                <Route path="referrals" element={<ReferralPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
