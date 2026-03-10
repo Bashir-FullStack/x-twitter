@@ -26,6 +26,8 @@ import PostDetailPage from "./pages/dashboard/PostDetailPage";
 import HelpPage from "./pages/dashboard/HelpPage";
 import TermsPage from "./pages/dashboard/TermsPage";
 import PrivacyPage from "./pages/dashboard/PrivacyPage";
+import VerificationPage from "./pages/dashboard/VerificationPage";
+import ReferralPage from "./pages/dashboard/ReferralPage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
