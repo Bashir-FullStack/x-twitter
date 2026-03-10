@@ -10,7 +10,7 @@ import FollowListDialog from "@/components/FollowListDialog";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getAvatarUrl } from "@/lib/avatar";
-import { ArrowLeft, Calendar, Mail, MoreHorizontal, Shield, Ban, Flag, VolumeX, MessageSquare, Link2, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Calendar, MoreHorizontal, Shield, Ban, Flag, VolumeX, MessageSquare, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +39,7 @@ const UserProfilePage = () => {
   const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
   const [isAuthorAdmin, setIsAuthorAdmin] = useState(false);
   const [tab, setTab] = useState("posts");
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -61,12 +62,12 @@ const UserProfilePage = () => {
     setFollowersCount(followersRes.count || 0);
     setFollowingCount(followingRes.count || 0);
     setIsAuthorAdmin((roleRes.data?.length || 0) > 0);
+    setLastSeen(profileRes.data?.last_seen || null);
 
     if (user) {
       const { data: followData } = await supabase.from("follows").select("id").eq("follower_id", user.id).eq("following_id", userId).maybeSingle();
       setIsFollowing(!!followData);
 
-      // Find mutual followers
       const [myFollowing, theirFollowers] = await Promise.all([
         supabase.from("follows").select("following_id").eq("follower_id", user.id),
         supabase.from("follows").select("follower_id").eq("following_id", userId),
@@ -91,17 +92,9 @@ const UserProfilePage = () => {
       const repostedSet = new Set(repostsRes.data?.map((r) => r.post_id));
 
       setPosts(postsRes.data.map((p) => ({
-        ...p,
-        tags: p.tags || [],
-        profile: {
-          display_name: profileRes.data.display_name || "User",
-          avatar_url: profileRes.data.avatar_url,
-          is_verified: profileRes.data.is_verified,
-          user_id: userId,
-        },
-        liked: likedSet.has(p.id),
-        bookmarked: bookmarkedSet.has(p.id),
-        reposted: repostedSet.has(p.id),
+        ...p, tags: p.tags || [],
+        profile: { display_name: profileRes.data.display_name || "User", avatar_url: profileRes.data.avatar_url, is_verified: profileRes.data.is_verified, user_id: userId },
+        liked: likedSet.has(p.id), bookmarked: bookmarkedSet.has(p.id), reposted: repostedSet.has(p.id),
       })));
     } else {
       setPosts([]);
@@ -112,6 +105,11 @@ const UserProfilePage = () => {
 
   const toggleFollow = async () => {
     if (!user || !userId) return;
+    // ❌ Can't unfollow admin accounts
+    if (isFollowing && isAuthorAdmin) {
+      toast({ title: "Cannot unfollow", description: "You cannot unfollow admin accounts.", variant: "destructive" });
+      return;
+    }
     if (isFollowing) {
       await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", userId);
       setIsFollowing(false);
@@ -121,7 +119,6 @@ const UserProfilePage = () => {
       setIsFollowing(true);
       setFollowersCount((c) => c + 1);
       toast({ title: `Following ${profile?.display_name}` });
-      // Create follow notification
       await supabase.from("notifications").insert({ user_id: userId, title: `${user.email?.split("@")[0]} followed you`, type: "follow" });
     }
   };
@@ -136,8 +133,8 @@ const UserProfilePage = () => {
 
   const blockUser = () => {
     setIsBlocked(true);
-    if (isFollowing) toggleFollow();
-    toast({ title: `@${profile?.display_name} blocked`, description: "They won't be able to see your posts or message you." });
+    if (isFollowing && !isAuthorAdmin) toggleFollow();
+    toast({ title: `@${profile?.display_name} blocked` });
   };
 
   const muteUser = () => {
@@ -146,8 +143,17 @@ const UserProfilePage = () => {
   };
 
   const avatarUrl = getAvatarUrl(profile?.avatar_url);
-
   const mediaPosts = posts.filter(p => p.image_url);
+
+  const formatLastSeen = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Online now";
+    if (mins < 60) return `Last seen ${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Last seen ${hours}h ago`;
+    return `Last seen ${new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  };
 
   if (loading) {
     return (
@@ -231,7 +237,9 @@ const UserProfilePage = () => {
                 <DropdownMenuItem onClick={() => setShowReport(true)} className="gap-2"><Flag className="h-4 w-4" /> Report @{profile.display_name}</DropdownMenuItem>
                 <DropdownMenuItem onClick={muteUser} className="gap-2"><VolumeX className="h-4 w-4" /> {isMuted ? "Unmute" : "Mute"} @{profile.display_name}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={blockUser} className="gap-2 text-destructive"><Ban className="h-4 w-4" /> Block @{profile.display_name}</DropdownMenuItem>
+                {!isAuthorAdmin && (
+                  <DropdownMenuItem onClick={blockUser} className="gap-2 text-destructive"><Ban className="h-4 w-4" /> Block @{profile.display_name}</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="outline" size="icon" className="rounded-full h-9 w-9" onClick={() => navigate("/dashboard/messages")}>
@@ -242,7 +250,7 @@ const UserProfilePage = () => {
               variant={isFollowing ? "outline" : "default"}
               className={`rounded-full px-5 font-bold ${!isFollowing ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
             >
-              {isFollowing ? "Following" : "Follow"}
+              {isFollowing ? (isAuthorAdmin ? "Following ✓" : "Following") : "Follow"}
             </Button>
           </>
         )}
@@ -255,12 +263,17 @@ const UserProfilePage = () => {
           {profile.is_verified && <VerifiedBadge className="h-5 w-5" />}
           {isAuthorAdmin && <span className="ml-1 text-[10px] font-bold bg-success/20 text-success px-2 py-0.5 rounded-full">ADMIN</span>}
         </h2>
+        {/* ❌ Hide email for admin accounts */}
         {profile.bio && <p className="text-[15px] mt-2 leading-[20px]">{profile.bio}</p>}
         <div className="flex items-center gap-4 mt-3 text-[15px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
             Joined {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </span>
+          {/* Show last seen time */}
+          {lastSeen && (
+            <span className="text-[13px]">{formatLastSeen(lastSeen)}</span>
+          )}
         </div>
         <div className="flex gap-5 mt-3">
           <button onClick={() => setFollowListType("following")} className="text-[15px] hover:underline">

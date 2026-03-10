@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Zap } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Link } from "react-router-dom";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,9 +18,12 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const refCode = searchParams.get("ref");
 
   if (user) {
     navigate("/dashboard", { replace: true });
@@ -26,6 +32,10 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLogin && !acceptedTerms) {
+      toast({ title: "Please accept Terms & Privacy Policy", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     if (isLogin) {
@@ -33,6 +43,14 @@ const Auth = () => {
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
       } else {
+        // Update last_seen and check terms acceptance
+        const { data: profile } = await supabase.from("profiles").select("terms_accepted").eq("user_id", (await supabase.auth.getUser()).data.user?.id).single();
+        if (profile && !profile.terms_accepted) {
+          // Mark terms accepted on login (they agreed by logging in)
+          await supabase.from("profiles").update({ terms_accepted: true, last_seen: new Date().toISOString() }).eq("user_id", (await supabase.auth.getUser()).data.user?.id);
+        } else {
+          await supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("user_id", (await supabase.auth.getUser()).data.user?.id);
+        }
         navigate("/dashboard");
       }
     } else {
@@ -40,6 +58,17 @@ const Auth = () => {
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
       } else {
+        // Mark terms as accepted for new signup
+        setTimeout(async () => {
+          const { data: { user: newUser } } = await supabase.auth.getUser();
+          if (newUser) {
+            await supabase.from("profiles").update({ terms_accepted: true }).eq("user_id", newUser.id);
+            // If referred, record the referral
+            if (refCode) {
+              await supabase.from("referrals").update({ referred_user_id: newUser.id, status: "completed" }).eq("referral_code", refCode).eq("status", "pending");
+            }
+          }
+        }, 1000);
         toast({ title: "Account created!", description: "Welcome aboard. Let's set you up." });
         navigate("/onboarding");
       }
@@ -53,9 +82,9 @@ const Auth = () => {
         <ThemeToggle />
       </div>
 
-      {/* Left branding panel (desktop) */}
-      <div className="hidden lg:flex flex-1 items-center justify-center bg-primary/5">
-        <Zap className="h-72 w-72 text-primary/20" />
+      {/* Left branding panel */}
+      <div className="hidden lg:flex flex-1 items-center justify-center bg-foreground">
+        <Zap className="h-72 w-72 text-primary" />
       </div>
 
       {/* Right form panel */}
@@ -72,49 +101,35 @@ const Auth = () => {
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-[15px]">Name</Label>
-                <Input
-                  id="name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your name"
-                  className="h-12 rounded-lg text-[15px]"
-                />
+                <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" className="h-12 rounded-lg text-[15px]" />
               </div>
             )}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-[15px]">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="h-12 rounded-lg text-[15px]"
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className="h-12 rounded-lg text-[15px]" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-[15px]">Password</Label>
               <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  className="h-12 rounded-lg text-[15px]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-12 rounded-lg text-[15px]" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
+
+            {/* Terms & Privacy acceptance for signup */}
+            {!isLogin && (
+              <div className="flex items-start gap-3">
+                <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-1" />
+                <label htmlFor="terms" className="text-[13px] text-muted-foreground leading-tight cursor-pointer">
+                  I agree to the{" "}
+                  <Link to="/dashboard/terms" className="text-primary hover:underline" target="_blank">Terms of Service</Link>{" "}
+                  and{" "}
+                  <Link to="/dashboard/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>
+                </label>
+              </div>
+            )}
 
             {isLogin && (
               <button type="button" className="text-sm text-primary hover:underline">
@@ -122,18 +137,20 @@ const Auth = () => {
               </button>
             )}
 
-            <Button type="submit" className="w-full h-12 rounded-full bg-foreground text-background hover:bg-foreground/90 font-bold text-[15px]" disabled={loading}>
+            {refCode && !isLogin && (
+              <div className="flex items-center gap-2 p-3 bg-success/10 rounded-xl border border-success/20">
+                <span className="text-sm text-success font-medium">🎉 Invited by a friend! Referral: {refCode}</span>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-12 rounded-full bg-foreground text-background hover:bg-foreground/90 font-bold text-[15px]" disabled={loading || (!isLogin && !acceptedTerms)}>
               {loading ? "Please wait..." : isLogin ? "Sign in" : "Create account"}
             </Button>
           </form>
 
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">or</span></div>
           </div>
 
           <Button variant="outline" className="w-full h-12 rounded-full font-bold text-[15px]" disabled>
@@ -143,10 +160,7 @@ const Auth = () => {
 
           <p className="text-center text-[15px] text-muted-foreground">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline font-medium"
-            >
+            <button onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline font-medium">
               {isLogin ? "Sign up" : "Sign in"}
             </button>
           </p>
