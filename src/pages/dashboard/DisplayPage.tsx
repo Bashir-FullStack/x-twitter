@@ -6,7 +6,14 @@ import { Switch } from "@/components/ui/switch";
 
 const DisplayPage = () => {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
+  const setTheme = (t: string) => {
+    if ((t === "dark" && theme === "light") || (t === "light" && theme === "dark")) toggleTheme();
+    if (t === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if ((prefersDark && theme === "light") || (!prefersDark && theme === "dark")) toggleTheme();
+    }
+  };
 
   return (
     <div className="max-w-[600px] border-x border-border min-h-screen mx-auto lg:mx-0">
