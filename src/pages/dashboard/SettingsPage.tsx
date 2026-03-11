@@ -90,36 +90,34 @@ const SettingsPage = () => {
     {
       title: "Your account",
       items: [
-        { icon: User, label: "Account information", desc: "See your account information", path: "/dashboard/profile" },
+        { icon: User, label: "Account information", desc: "See your account information", path: "/dashboard/account-info" },
         { icon: Lock, label: "Change your password", desc: "Change your password at any time", path: "/dashboard/security" },
-        { icon: Download, label: "Download your data", desc: "Get a copy of all your data", action: handleExportData, actionLabel: exporting ? "Exporting..." : undefined },
-        { icon: Trash2, label: "Deactivate your account", desc: "Permanently deactivate your account", danger: true, action: () => setDeleteAccountDialog(true) },
+        { icon: Download, label: "Download your data", desc: "Get a copy of all your data", path: "/dashboard/data-export" },
+        { icon: Trash2, label: "Deactivate your account", desc: "Permanently deactivate your account", danger: true, path: "/dashboard/deactivate" },
       ],
     },
     {
       title: "Privacy and safety",
       items: [
         { icon: Shield, label: "Privacy settings", desc: "Manage what information you share", path: "/dashboard/privacy" },
-        { icon: Eye, label: "Content you see", desc: "Decide what you see based on preferences" },
+        { icon: Eye, label: "Muted & blocked", desc: "Manage muted and blocked accounts", path: "/dashboard/muted-blocked" },
         { icon: VolumeX, label: "Muted words", desc: `${mutedWordsList.length} word(s) muted`, action: () => setMutedWordsDialog(true) },
-        { icon: Flag, label: "Report a problem", desc: "Report inappropriate content", path: "/dashboard/help" },
+        { icon: Flag, label: "My reports", desc: "View your submitted reports", path: "/dashboard/reports" },
       ],
     },
     {
       title: "Notifications",
       items: [
-        { icon: Bell, label: "Push notifications", desc: "Manage notifications", toggle: true, checked: pushNotifs, onToggle: () => setPushNotifs(!pushNotifs) },
-        { icon: Smartphone, label: "Email notifications", desc: "Get email updates", toggle: true, checked: emailNotifs, onToggle: () => setEmailNotifs(!emailNotifs) },
+        { icon: Bell, label: "Notification preferences", desc: "Customize all notifications", path: "/dashboard/notification-settings" },
         { icon: Volume2, label: "Notification sounds", desc: "Play sounds for notifications", toggle: true, checked: soundEnabled, onToggle: () => { setSoundEnabled(!soundEnabled); toast({ title: soundEnabled ? "Sounds disabled" : "Sounds enabled" }); } },
       ],
     },
     {
       title: "Display and accessibility",
       items: [
-        { icon: theme === "dark" ? Moon : Sun, label: "Dark mode", desc: `Currently ${theme} mode`, toggle: true, checked: theme === "dark", onToggle: toggleTheme },
+        { icon: theme === "dark" ? Moon : Sun, label: "Display", desc: "Theme, font size, and colors", path: "/dashboard/display" },
+        { icon: Accessibility, label: "Accessibility", desc: "Vision, motion, and reading options", path: "/dashboard/accessibility" },
         { icon: Palette, label: "Auto-play videos", desc: "Automatically play videos in feed", toggle: true, checked: autoPlayVideos, onToggle: () => setAutoPlayVideos(!autoPlayVideos) },
-        { icon: Accessibility, label: "Reduced motion", desc: "Minimize animations", toggle: true, checked: reducedMotion, onToggle: () => { setReducedMotion(!reducedMotion); toast({ title: reducedMotion ? "Animations enabled" : "Animations reduced" }); } },
-        { icon: Eye, label: "High contrast", desc: "Increase visual contrast", toggle: true, checked: highContrast, onToggle: () => setHighContrast(!highContrast) },
       ],
     },
     {
@@ -136,7 +134,8 @@ const SettingsPage = () => {
         { icon: HelpCircle, label: "Help Center", desc: "Find answers to your questions", path: "/dashboard/help" },
         { icon: FileText, label: "Terms of Service", desc: "Read our terms", path: "/dashboard/terms" },
         { icon: Shield, label: "Privacy Policy", desc: "Read our privacy policy", path: "/dashboard/privacy" },
-        { icon: Heart, label: "About Platform", desc: "Learn more about us" },
+        { icon: Heart, label: "About Platform", desc: "Learn more about us", path: "/dashboard/about" },
+        { icon: Globe, label: "Connected apps", desc: "Manage third-party connections", path: "/dashboard/connected-apps" },
       ],
     },
   ];

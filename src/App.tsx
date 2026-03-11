@@ -30,6 +30,26 @@ import VerificationPage from "./pages/dashboard/VerificationPage";
 import ReferralPage from "./pages/dashboard/ReferralPage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+// New pages
+import LikedPostsPage from "./pages/dashboard/LikedPostsPage";
+import DraftsPage from "./pages/dashboard/DraftsPage";
+import FollowersPage from "./pages/dashboard/FollowersPage";
+import MediaPage from "./pages/dashboard/MediaPage";
+import ListsPage from "./pages/dashboard/ListsPage";
+import MutedBlockedPage from "./pages/dashboard/MutedBlockedPage";
+import ActivityLogPage from "./pages/dashboard/ActivityLogPage";
+import DisplayPage from "./pages/dashboard/DisplayPage";
+import AccountInfoPage from "./pages/dashboard/AccountInfoPage";
+import DataExportPage from "./pages/dashboard/DataExportPage";
+import DeactivatePage from "./pages/dashboard/DeactivatePage";
+import NotificationSettingsPage from "./pages/dashboard/NotificationSettingsPage";
+import AboutPage from "./pages/dashboard/AboutPage";
+import ReportsPage from "./pages/dashboard/ReportsPage";
+import PollsPage from "./pages/dashboard/PollsPage";
+import HashtagsPage from "./pages/dashboard/HashtagsPage";
+import ScheduledPostsPage from "./pages/dashboard/ScheduledPostsPage";
+import AccessibilityPage from "./pages/dashboard/AccessibilityPage";
+import ConnectedAppsPage from "./pages/dashboard/ConnectedAppsPage";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +92,26 @@ const App = () => (
                 <Route path="privacy" element={<PrivacyPage />} />
                 <Route path="verification" element={<VerificationPage />} />
                 <Route path="referrals" element={<ReferralPage />} />
+                {/* New pages */}
+                <Route path="liked" element={<LikedPostsPage />} />
+                <Route path="drafts" element={<DraftsPage />} />
+                <Route path="followers" element={<FollowersPage />} />
+                <Route path="media" element={<MediaPage />} />
+                <Route path="lists" element={<ListsPage />} />
+                <Route path="muted-blocked" element={<MutedBlockedPage />} />
+                <Route path="activity" element={<ActivityLogPage />} />
+                <Route path="display" element={<DisplayPage />} />
+                <Route path="account-info" element={<AccountInfoPage />} />
+                <Route path="data-export" element={<DataExportPage />} />
+                <Route path="deactivate" element={<DeactivatePage />} />
+                <Route path="notification-settings" element={<NotificationSettingsPage />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="polls" element={<PollsPage />} />
+                <Route path="hashtags" element={<HashtagsPage />} />
+                <Route path="scheduled" element={<ScheduledPostsPage />} />
+                <Route path="accessibility" element={<AccessibilityPage />} />
+                <Route path="connected-apps" element={<ConnectedAppsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
