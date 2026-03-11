@@ -62,6 +62,8 @@ const DashboardLayout = () => {
     { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
     { icon: Shield, label: "Security", path: "/dashboard/security" },
     { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+    { icon: Feather, label: "Drafts", path: "/dashboard/drafts" },
+    { icon: Zap, label: "Verification", path: "/dashboard/verification" },
   ];
 
   return (
