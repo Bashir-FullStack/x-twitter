@@ -9,6 +9,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import ProfilePage from "./pages/dashboard/ProfilePage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
@@ -28,9 +31,10 @@ import TermsPage from "./pages/dashboard/TermsPage";
 import PrivacyPage from "./pages/dashboard/PrivacyPage";
 import VerificationPage from "./pages/dashboard/VerificationPage";
 import ReferralPage from "./pages/dashboard/ReferralPage";
+import GamificationPage from "./pages/dashboard/GamificationPage";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
-// New pages
+// Existing pages
 import LikedPostsPage from "./pages/dashboard/LikedPostsPage";
 import DraftsPage from "./pages/dashboard/DraftsPage";
 import FollowersPage from "./pages/dashboard/FollowersPage";
@@ -64,6 +68,9 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route
                 path="/dashboard"
@@ -92,7 +99,8 @@ const App = () => (
                 <Route path="privacy" element={<PrivacyPage />} />
                 <Route path="verification" element={<VerificationPage />} />
                 <Route path="referrals" element={<ReferralPage />} />
-                {/* New pages */}
+                <Route path="achievements" element={<GamificationPage />} />
+                {/* Existing pages */}
                 <Route path="liked" element={<LikedPostsPage />} />
                 <Route path="drafts" element={<DraftsPage />} />
                 <Route path="followers" element={<FollowersPage />} />

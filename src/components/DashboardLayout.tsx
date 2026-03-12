@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import TermsComplianceCheck from "@/components/TermsComplianceCheck";
 import {
   User, Settings, Bell, Search, Mail,
   FileText, Shield, BarChart3, LogOut, X, Zap,
@@ -64,6 +65,7 @@ const DashboardLayout = () => {
     { icon: Settings, label: "Settings", path: "/dashboard/settings" },
     { icon: Feather, label: "Drafts", path: "/dashboard/drafts" },
     { icon: Zap, label: "Verification", path: "/dashboard/verification" },
+    { icon: Home, label: "Achievements", path: "/dashboard/achievements" },
   ];
 
   return (
@@ -212,6 +214,7 @@ const DashboardLayout = () => {
         </header>
 
         <main className="flex-1 pb-14 lg:pb-0">
+          <TermsComplianceCheck />
           <Outlet />
         </main>
       </div>
