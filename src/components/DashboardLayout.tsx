@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import TermsComplianceCheck from "@/components/TermsComplianceCheck";
 import {
   User, Settings, Bell, Search, Mail,
   FileText, Shield, BarChart3, LogOut, X, Zap,
