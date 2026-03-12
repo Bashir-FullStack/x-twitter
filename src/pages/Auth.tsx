@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Zap } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import { Link } from "react-router-dom";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,13 +42,9 @@ const Auth = () => {
       if (error) {
         toast({ title: "Login failed", description: error.message, variant: "destructive" });
       } else {
-        // Update last_seen and check terms acceptance
-        const { data: profile } = await supabase.from("profiles").select("terms_accepted").eq("user_id", (await supabase.auth.getUser()).data.user?.id).single();
-        if (profile && !profile.terms_accepted) {
-          // Mark terms accepted on login (they agreed by logging in)
-          await supabase.from("profiles").update({ terms_accepted: true, last_seen: new Date().toISOString() }).eq("user_id", (await supabase.auth.getUser()).data.user?.id);
-        } else {
-          await supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("user_id", (await supabase.auth.getUser()).data.user?.id);
+        const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+        if (loggedInUser) {
+          await supabase.from("profiles").update({ last_seen: new Date().toISOString() }).eq("user_id", loggedInUser.id);
         }
         navigate("/dashboard");
       }
@@ -58,19 +53,22 @@ const Auth = () => {
       if (error) {
         toast({ title: "Signup failed", description: error.message, variant: "destructive" });
       } else {
-        // Mark terms as accepted for new signup
+        // Store email for verification page
+        localStorage.setItem("pending_verification_email", email);
+        
+        // Mark terms as accepted after a delay (profile may not exist yet)
         setTimeout(async () => {
           const { data: { user: newUser } } = await supabase.auth.getUser();
           if (newUser) {
             await supabase.from("profiles").update({ terms_accepted: true }).eq("user_id", newUser.id);
-            // If referred, record the referral
             if (refCode) {
               await supabase.from("referrals").update({ referred_user_id: newUser.id, status: "completed" }).eq("referral_code", refCode).eq("status", "pending");
             }
           }
-        }, 1000);
-        toast({ title: "Account created!", description: "Welcome aboard. Let's set you up." });
-        navigate("/onboarding");
+        }, 2000);
+        
+        toast({ title: "Check your email!", description: "We sent you a 6-digit verification code." });
+        navigate("/verify-email");
       }
     }
     setLoading(false);
@@ -78,9 +76,7 @@ const Auth = () => {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <div className="absolute right-4 top-4 z-10">
-        <ThemeToggle />
-      </div>
+      <div className="absolute right-4 top-4 z-10"><ThemeToggle /></div>
 
       {/* Left branding panel */}
       <div className="hidden lg:flex flex-1 items-center justify-center bg-foreground">
@@ -118,7 +114,6 @@ const Auth = () => {
               </div>
             </div>
 
-            {/* Terms & Privacy acceptance for signup */}
             {!isLogin && (
               <div className="flex items-start gap-3">
                 <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} className="mt-1" />
@@ -132,9 +127,9 @@ const Auth = () => {
             )}
 
             {isLogin && (
-              <button type="button" className="text-sm text-primary hover:underline">
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline block">
                 Forgot password?
-              </button>
+              </Link>
             )}
 
             {refCode && !isLogin && (

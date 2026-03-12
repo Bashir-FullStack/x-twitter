@@ -214,6 +214,7 @@ const DashboardLayout = () => {
         </header>
 
         <main className="flex-1 pb-14 lg:pb-0">
+          <TermsComplianceCheck />
           <Outlet />
         </main>
       </div>
