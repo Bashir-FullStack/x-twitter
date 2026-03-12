@@ -65,6 +65,7 @@ const DashboardLayout = () => {
     { icon: Settings, label: "Settings", path: "/dashboard/settings" },
     { icon: Feather, label: "Drafts", path: "/dashboard/drafts" },
     { icon: Zap, label: "Verification", path: "/dashboard/verification" },
+    { icon: Home, label: "Achievements", path: "/dashboard/achievements" },
   ];
 
   return (
