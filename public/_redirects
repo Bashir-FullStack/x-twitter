@@ -1,0 +1,8 @@
+# Create public folder if it doesn't exist
+mkdir -p public
+
+# Create _redirects file
+cat > public/_redirects << 'EOF'
+# SPA redirect - all routes go to index.html
+/*    /index.html    200
+EOF
