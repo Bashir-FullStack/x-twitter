@@ -6,18 +6,13 @@ import { Zap } from "lucide-react";
 const Index = () => {
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left side - giant logo */}
       <div className="hidden lg:flex flex-1 items-center justify-center bg-foreground">
         <Zap className="h-[380px] w-[380px] text-primary" />
       </div>
 
-      {/* Right side - CTA */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-[440px]">
-          <div className="absolute right-6 top-6">
-            <ThemeToggle />
-          </div>
-
+          <div className="absolute right-6 top-6"><ThemeToggle /></div>
           <Zap className="h-12 w-12 text-primary mb-10 lg:hidden" />
 
           <h1 className="font-display text-[40px] sm:text-[64px] font-extrabold leading-[1.05] tracking-tight mb-12">
@@ -51,11 +46,8 @@ const Index = () => {
 
             <p className="text-[11px] text-muted-foreground leading-tight">
               By signing up, you agree to the{" "}
-              <Link to="/dashboard/terms" className="text-primary hover:underline">Terms of Service</Link>{" "}
-              and{" "}
-              <Link to="/dashboard/privacy" className="text-primary hover:underline">Privacy Policy</Link>
-              , including{" "}
-              <span className="text-primary">Cookie Use</span>.
+              <Link to="/dashboard/terms" className="text-primary hover:underline">Terms of Service</Link>{" "}and{" "}
+              <Link to="/dashboard/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
             </p>
           </div>
 
@@ -71,10 +63,7 @@ const Index = () => {
             <Link to="/dashboard/privacy" className="hover:underline">Privacy Policy</Link>
             <span className="hover:underline cursor-pointer">Cookie Policy</span>
             <span className="hover:underline cursor-pointer">Accessibility</span>
-            <span className="hover:underline cursor-pointer">Ads info</span>
-            <span className="hover:underline cursor-pointer">Blog</span>
-            <span className="hover:underline cursor-pointer">Careers</span>
-            <span>© 2026 Platform Corp.</span>
+            <span>© 2026 X-TWITTER</span>
           </div>
         </div>
       </div>
