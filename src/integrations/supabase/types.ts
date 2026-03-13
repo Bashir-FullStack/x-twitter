@@ -525,14 +525,19 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          category: string | null
           created_at: string
           display_name: string | null
+          heard_from: string | null
           id: string
           is_verified: boolean
+          is_white_tick: boolean | null
           last_seen: string | null
           onboarding_completed: boolean
           phone: string | null
           privacy_settings: Json | null
+          referral_code: string | null
+          signup_purpose: string | null
           terms_accepted: boolean
           updated_at: string
           user_id: string
@@ -540,14 +545,19 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          category?: string | null
           created_at?: string
           display_name?: string | null
+          heard_from?: string | null
           id?: string
           is_verified?: boolean
+          is_white_tick?: boolean | null
           last_seen?: string | null
           onboarding_completed?: boolean
           phone?: string | null
           privacy_settings?: Json | null
+          referral_code?: string | null
+          signup_purpose?: string | null
           terms_accepted?: boolean
           updated_at?: string
           user_id: string
@@ -555,14 +565,19 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          category?: string | null
           created_at?: string
           display_name?: string | null
+          heard_from?: string | null
           id?: string
           is_verified?: boolean
+          is_white_tick?: boolean | null
           last_seen?: string | null
           onboarding_completed?: boolean
           phone?: string | null
           privacy_settings?: Json | null
+          referral_code?: string | null
+          signup_purpose?: string | null
           terms_accepted?: boolean
           updated_at?: string
           user_id?: string

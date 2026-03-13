@@ -28,8 +28,13 @@ const ReferralPage = () => {
     if (!user) return;
     setLoading(true);
 
-    // Generate or get existing referral code
-    const code = user.id.slice(0, 8).toUpperCase();
+    // Get referral code from profile, or generate one
+    const { data: profile } = await supabase.from("profiles").select("referral_code").eq("user_id", user.id).single();
+    let code = profile?.referral_code;
+    if (!code) {
+      code = user.id.slice(0, 6).toUpperCase();
+      await supabase.from("profiles").update({ referral_code: code }).eq("user_id", user.id);
+    }
     setReferralCode(code);
 
     const { data } = await supabase

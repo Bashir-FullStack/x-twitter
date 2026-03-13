@@ -219,7 +219,7 @@ const Dashboard = () => {
           <div className="text-center py-20 px-8">
             <Sparkles className="h-10 w-10 text-primary mx-auto mb-4" />
             <p className="text-xl font-display font-bold">
-              {tab === "following" ? "No posts from people you follow" : tab === "trending" ? "No trending posts yet" : "Welcome to Platform!"}
+              {tab === "following" ? "No posts from people you follow" : tab === "trending" ? "No trending posts yet" : "Welcome to X-TWITTER!"}
             </p>
             <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
               {tab === "following" ? "Follow some people to see their posts here." : "Create your first post or explore trending topics."}
@@ -256,7 +256,7 @@ const Dashboard = () => {
           <span className="hover:underline cursor-pointer">Cookies</span>
           <a href="/dashboard/help" className="hover:underline cursor-pointer">Help</a>
           <span className="hover:underline cursor-pointer">Accessibility</span>
-          <span>© 2026 Platform</span>
+          <span>© 2026 X-TWITTER</span>
         </div>
       </div>
 

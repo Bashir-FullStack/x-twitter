@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import VerifiedBadge from "@/components/VerifiedBadge";
+import VerifiedBadge, { WhiteTickBadge } from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
 import InlineComments from "@/components/feed/InlineComments";
 import { Heart, MessageCircle, Repeat2, Bookmark, Share, MoreHorizontal, Trash2, Pin, BarChart3, Flag, Quote, Edit, VolumeX, ExternalLink, Shield, Eye, Copy, Link2, Play } from "lucide-react";
