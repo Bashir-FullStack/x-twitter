@@ -12,11 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { FeedPostData } from "@/pages/Dashboard";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import type { FeedPostData } from "@/pages/Dashboard";
 
 interface FeedPostProps {
   post: FeedPostData;
