@@ -80,7 +80,7 @@ const DashboardLayout = () => {
           <div className="flex h-14 items-center px-3 xl:px-4">
             <Link to="/dashboard" className="flex items-center gap-2.5 p-3 rounded-full hover:bg-muted transition-colors">
               <Zap className="h-7 w-7 text-primary" />
-              <span className="font-display text-xl font-bold hidden xl:inline">Platform</span>
+              <span className="font-display text-xl font-bold hidden xl:inline">X-TWITTER</span>
             </Link>
             <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-foreground p-1">
               <X className="h-5 w-5" />
