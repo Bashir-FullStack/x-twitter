@@ -256,7 +256,7 @@ const Dashboard = () => {
           <span className="hover:underline cursor-pointer">Cookies</span>
           <a href="/dashboard/help" className="hover:underline cursor-pointer">Help</a>
           <span className="hover:underline cursor-pointer">Accessibility</span>
-          <span>© 2026 Platform</span>
+          <span>© 2026 X-TWITTER</span>
         </div>
       </div>
 
