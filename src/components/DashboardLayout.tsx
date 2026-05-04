@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/hooks/useRole";
+import { usePresence } from "@/hooks/usePresence";
 import { supabase } from "@/integrations/supabase/client";
 import UserAvatar from "@/components/UserAvatar";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -26,6 +27,7 @@ const DashboardLayout = () => {
   const { user, signOut } = useAuth();
   const { isAdmin, isModerator } = useRole();
   const location = useLocation();
+  usePresence();
 
   useEffect(() => {
     if (!user) return;
