@@ -119,36 +119,32 @@ const FeedPost = ({ post, onUpdate, onQuote }: FeedPostProps) => {
 
   const toggleRepost = async () => {
     if (!user) return;
+    // Optimistic update
+    const wasReposted = reposted;
+    const prevCount = repostsCount;
+    setReposted(!wasReposted);
+    setRepostsCount(wasReposted ? Math.max(0, prevCount - 1) : prevCount + 1);
     try {
-      if (reposted) {
-        // Undo repost
+      if (wasReposted) {
         const { error } = await supabase.from("reposts").delete().eq("user_id", user.id).eq("post_id", post.id);
         if (error) throw error;
-        const newCount = Math.max(0, repostsCount - 1);
-        setReposted(false);
-        setRepostsCount(newCount);
-        await supabase.from("posts").update({ reposts_count: newCount }).eq("id", post.id);
         toast({ title: "Repost removed" });
       } else {
-        // Check if already reposted (avoid duplicate)
-        const { data: existing } = await supabase.from("reposts").select("id").eq("user_id", user.id).eq("post_id", post.id).maybeSingle();
-        if (existing) {
-          setReposted(true);
-          toast({ title: "Already reposted" });
-          return;
-        }
         const { error } = await supabase.from("reposts").insert({ user_id: user.id, post_id: post.id });
-        if (error) throw error;
-        const newCount = repostsCount + 1;
-        setReposted(true);
-        setRepostsCount(newCount);
-        await supabase.from("posts").update({ reposts_count: newCount }).eq("id", post.id);
+        if (error) {
+          // Already reposted (unique violation) — keep state
+          if (error.code === "23505") { toast({ title: "Already reposted" }); return; }
+          throw error;
+        }
         if (post.user_id !== user.id) {
           await supabase.from("notifications").insert({ user_id: post.user_id, title: `${user.email?.split("@")[0]} reposted your post`, type: "repost", link: `/dashboard/post/${post.id}` });
         }
         toast({ title: "Reposted!" });
       }
     } catch (err: any) {
+      // Revert on error
+      setReposted(wasReposted);
+      setRepostsCount(prevCount);
       toast({ title: "Repost failed", description: err.message, variant: "destructive" });
     }
   };

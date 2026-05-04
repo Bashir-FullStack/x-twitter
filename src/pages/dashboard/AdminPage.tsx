@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
+import PresenceIndicator from "@/components/PresenceIndicator";
+import AdminCharts from "@/components/admin/AdminCharts";
+import { presenceLabel } from "@/hooks/usePresence";
 import { useNavigate } from "react-router-dom";
 
 interface UserProfile {
@@ -60,7 +63,17 @@ const AdminPage = () => {
   const [userFilter, setUserFilter] = useState("all");
   const [contentFilter, setContentFilter] = useState("all");
 
-  useEffect(() => { if (isAdmin) loadData(); }, [isAdmin]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadData();
+    const channel = supabase.channel("admin-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => loadData())
+      .subscribe();
+    const interval = setInterval(loadData, 30000);
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+  }, [isAdmin]);
 
   const loadData = async () => {
     setLoading(true);
@@ -365,6 +378,9 @@ const AdminPage = () => {
         ))}
       </div>
 
+      {/* Realtime charts dashboard */}
+      <AdminCharts />
+
       {/* Quick actions bar */}
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm" onClick={() => { const unverified = users.filter(u => !u.is_verified).slice(0, 10); massVerify(unverified.map(u => u.user_id)); }}>
@@ -425,7 +441,8 @@ const AdminPage = () => {
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         {u.roles.map(r => <Badge key={r} variant={r === "admin" || r === "super_admin" ? "default" : "secondary"} className="text-[10px]">{r}</Badge>)}
                         <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</span>
-                        {u.last_seen && <span className="text-xs text-muted-foreground">· Last seen {new Date(u.last_seen).toLocaleDateString()}</span>}
+                        <PresenceIndicator lastSeen={u.last_seen} />
+                        <span className="text-xs text-muted-foreground">{presenceLabel(u.last_seen).label}</span>
                       </div>
                     </div>
                   </div>

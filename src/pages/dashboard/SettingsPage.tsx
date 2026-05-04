@@ -38,6 +38,14 @@ const SettingsPage = () => {
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [dataSaver, setDataSaver] = useState(false);
+  const [readReceipts, setReadReceipts] = useState(true);
+  const [showOnline, setShowOnline] = useState(true);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [sensitiveContent, setSensitiveContent] = useState(false);
+  const [directMessages, setDirectMessages] = useState(true);
+  const [tagging, setTagging] = useState(true);
+  const [discoverableEmail, setDiscoverableEmail] = useState(false);
 
   const handleExportData = async () => {
     if (!user) return;
@@ -118,6 +126,19 @@ const SettingsPage = () => {
         { icon: theme === "dark" ? Moon : Sun, label: "Display", desc: "Theme, font size, and colors", path: "/dashboard/display" },
         { icon: Accessibility, label: "Accessibility", desc: "Vision, motion, and reading options", path: "/dashboard/accessibility" },
         { icon: Palette, label: "Auto-play videos", desc: "Automatically play videos in feed", toggle: true, checked: autoPlayVideos, onToggle: () => setAutoPlayVideos(!autoPlayVideos) },
+        { icon: Wifi, label: "Data saver", desc: "Lower data usage on cellular", toggle: true, checked: dataSaver, onToggle: () => { setDataSaver(!dataSaver); toast({ title: dataSaver ? "Data saver off" : "Data saver on" }); } },
+      ],
+    },
+    {
+      title: "Preferences",
+      items: [
+        { icon: Eye, label: "Read receipts", desc: "Let others see when you read messages", toggle: true, checked: readReceipts, onToggle: () => setReadReceipts(!readReceipts) },
+        { icon: Heart, label: "Show online status", desc: "Let people see when you're online", toggle: true, checked: showOnline, onToggle: () => setShowOnline(!showOnline) },
+        { icon: Smartphone, label: "Direct messages", desc: "Allow DMs from anyone", toggle: true, checked: directMessages, onToggle: () => setDirectMessages(!directMessages) },
+        { icon: User, label: "Allow tagging", desc: "Let others tag you in posts", toggle: true, checked: tagging, onToggle: () => setTagging(!tagging) },
+        { icon: AlertTriangle, label: "Show sensitive content", desc: "View posts that may contain sensitive media", toggle: true, checked: sensitiveContent, onToggle: () => setSensitiveContent(!sensitiveContent) },
+        { icon: Lock, label: "Two-factor authentication", desc: "Extra security for your account", toggle: true, checked: twoFactor, onToggle: () => { setTwoFactor(!twoFactor); toast({ title: twoFactor ? "2FA disabled" : "2FA enabled" }); } },
+        { icon: Globe, label: "Email discoverable", desc: "Let others find you by email", toggle: true, checked: discoverableEmail, onToggle: () => setDiscoverableEmail(!discoverableEmail) },
       ],
     },
     {
