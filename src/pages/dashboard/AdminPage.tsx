@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import VerifiedBadge from "@/components/VerifiedBadge";
 import UserAvatar from "@/components/UserAvatar";
+import PresenceIndicator from "@/components/PresenceIndicator";
+import AdminCharts from "@/components/admin/AdminCharts";
+import { presenceLabel } from "@/hooks/usePresence";
 import { useNavigate } from "react-router-dom";
 
 interface UserProfile {
@@ -60,7 +63,17 @@ const AdminPage = () => {
   const [userFilter, setUserFilter] = useState("all");
   const [contentFilter, setContentFilter] = useState("all");
 
-  useEffect(() => { if (isAdmin) loadData(); }, [isAdmin]);
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadData();
+    const channel = supabase.channel("admin-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => loadData())
+      .subscribe();
+    const interval = setInterval(loadData, 30000);
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+  }, [isAdmin]);
 
   const loadData = async () => {
     setLoading(true);
